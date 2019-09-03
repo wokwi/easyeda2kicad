@@ -136,7 +136,8 @@ function convertText(args: string[], objName = 'gr_text', parentCoords?: ICoordi
   ] = args;
   const layerName = textLayer(layer, objName === 'fp_text', type === 'N');
   const fontTable: { [key: string]: { width: number; thickness: number } } = {
-    'NotoSerifCJKsc-Medium': { width: 0.8, thickness: 0.3 }
+    'NotoSerifCJKsc-Medium': { width: 0.8, thickness: 0.3 },
+    'NotoSansCJKjp-DemiLight': { width: 0.6, thickness: 0.5 }
   };
   const fontMultiplier = font in fontTable ? fontTable[font] : { width: 1, thickness: 1 };
   const actualFontSize = kiUnits(fontSize) * fontMultiplier.width;
