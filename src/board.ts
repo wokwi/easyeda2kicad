@@ -15,7 +15,7 @@ const layers: { [key: string]: string } = {
   10: 'Edge.Cuts',
   12: 'Cmts.User',
   13: 'F.Fab',
-  14: 'B.Fab',
+  14: 'B.Fab'
 };
 
 interface ICoordinates {
@@ -159,12 +159,13 @@ function convertText(args: string[], objName = 'gr_text', parentCoords?: ICoordi
   ];
 }
 
-function convertArc(args: string[]) {
+export function convertArc(args: string[]) {
   const [width, layer, net, path, _, id, locked] = args;
-  const drawingParts = path.split(' ');
-  const [startX, startY] = drawingParts[0].substr(1).split(',');
-  const xAxisRotation = parseFloat(drawingParts[2]);
-  const [endX, endY] = drawingParts[5].split(',');
+  const [match, startPoint, arcParams] = /^M\s*([\d.\s]+)A\s*([\d.\s]+)$/.exec(
+    path.replace(/[,\s]+/g, ' ')
+  );
+  const [startX, startY] = startPoint.split(' ');
+  const [rx, ry, xAxisRotation, largeArc, sweep, endX, endY] = arcParams.split(' ');
   const start = kiCoords(startX, startY);
   const end = kiCoords(endX, endY);
   return [
