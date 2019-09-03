@@ -5,7 +5,7 @@
   "author": "Uri Shaked <uri@urishaked.com>",
   "license": "MIT",
   "scripts": {
-    "start": "ts-node src/board.ts",
+    "start": "ts-node src/main.ts",
     "test": "jest"
   },
   "devDependencies": {

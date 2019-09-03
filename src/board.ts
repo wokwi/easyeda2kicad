@@ -1,39 +1,9 @@
-import * as fs from 'fs';
 import { encodeObject } from './spectra';
+import { IEasyEDABoard } from './easyeda-types';
 
 // doc: https://docs.easyeda.com/en/DocumentFormat/3-EasyEDA-PCB-File-Format/index.html#shapes
 
-const input = require('../test-pcb.json');
-
-let output = `
-(kicad_pcb (version 20171130) (host pcbnew "(5.0.2)-1")
-
-(page A4)
-(layers
-  (0 F.Cu signal)
-  (31 B.Cu signal)
-  (32 B.Adhes user)
-  (33 F.Adhes user)
-  (34 B.Paste user)
-  (35 F.Paste user)
-  (36 B.SilkS user)
-  (37 F.SilkS user)
-  (38 B.Mask user)
-  (39 F.Mask user)
-  (40 Dwgs.User user)
-  (41 Cmts.User user)
-  (42 Eco1.User user)
-  (43 Eco2.User user)
-  (44 Edge.Cuts user)
-  (45 Margin user)
-  (46 B.CrtYd user)
-  (47 F.CrtYd user)
-  (48 B.Fab user hide)
-  (49 F.Fab user hide)
-)
-`;
-
-const layers = {
+const layers: { [key: string]: string } = {
   1: 'F.Cu',
   2: 'B.Cu',
   3: 'F.SilkS',
@@ -92,7 +62,7 @@ function kiStartEnd(
   ];
 }
 
-function convertVia(args: string[], parentCoords?: ICoordinates) {
+function convertVia(args: string[], nets: string[], parentCoords?: ICoordinates) {
   const [x, y, diameter, net, drill, id, locked] = args;
   return [
     'via',
@@ -104,7 +74,12 @@ function convertVia(args: string[], parentCoords?: ICoordinates) {
   ];
 }
 
-function convertTrack(args: string[], objName = 'segment', parentCoords?: ICoordinates) {
+function convertTrack(
+  args: string[],
+  nets: string[],
+  objName = 'segment',
+  parentCoords?: ICoordinates
+) {
   const [width, layer, net, coords, id, locked] = args;
   const netId = nets.indexOf(net);
   const coordList = coords.split(' ');
@@ -157,7 +132,7 @@ function convertText(args: string[], objName = 'gr_text', parentCoords?: ICoordi
     locked
   ] = args;
   const layerName = textLayer(layer, objName === 'fp_text', type === 'N');
-  const fontTable = {
+  const fontTable: { [key: string]: { width: number; thickness: number } } = {
     'NotoSerifCJKsc-Medium': { width: 0.8, thickness: 0.3 }
   };
   const fontMultiplier = font in fontTable ? fontTable[font] : { width: 1, thickness: 1 };
@@ -217,7 +192,7 @@ function convertFpArc(args: string[], parentCoords: ICoordinates) {
   ];
 }
 
-function convertPad(args: string[], parentCoords: ICoordinates) {
+function convertPad(args: string[], nets: string[], parentCoords: ICoordinates) {
   const [
     shape,
     x,
@@ -236,7 +211,7 @@ function convertPad(args: string[], parentCoords: ICoordinates) {
     locked
   ] = args;
   // TODO figure out angle from points
-  const shapes = {
+  const shapes: { [key: string]: string } = {
     ELLIPSE: 'circle',
     RECT: 'rect',
     OVAL: 'oval',
@@ -244,7 +219,7 @@ function convertPad(args: string[], parentCoords: ICoordinates) {
   };
   const netId = nets.indexOf(net);
   const drill = kiUnits(holeRadius);
-  const layers = {
+  const layers: { [key: string]: string[] } = {
     1: ['F.Cu', 'F.Paste', 'F.Mask'],
     2: ['B.Cu', 'B.Paste', 'B.Mask'],
     11: ['*.Cu', '*.Paste', '*.Mask']
@@ -278,7 +253,7 @@ function convertHole(args: string[], parentCoords: ICoordinates) {
   ];
 }
 
-function convertLib(args: string[]) {
+function convertLib(args: string[], nets: string[]) {
   const [x, y, attributes, rotation, importFlag, id, locked] = args;
   const shapeList = args
     .join('~')
@@ -289,7 +264,7 @@ function convertLib(args: string[]) {
   for (const shape of shapeList) {
     const shapeParts = shape.split('~');
     if (shapeParts[0] === 'TRACK') {
-      shapes.push(...convertTrack(shapeParts.slice(1), 'fp_line', coordinates));
+      shapes.push(...convertTrack(shapeParts.slice(1), nets, 'fp_line', coordinates));
     } else if (shapeParts[0] === 'TEXT') {
       shapes.push(convertText(shapeParts.slice(1), 'fp_text', coordinates));
     } else if (shapeParts[0] === 'ARC') {
@@ -297,7 +272,7 @@ function convertLib(args: string[]) {
     } else if (shapeParts[0] === 'HOLE') {
       shapes.push(convertHole(shapeParts.slice(1), coordinates));
     } else if (shapeParts[0] === 'PAD') {
-      shapes.push(convertPad(shapeParts.slice(1), coordinates));
+      shapes.push(convertPad(shapeParts.slice(1), nets, coordinates));
     } else {
       console.log(shapeParts[0]);
     }
@@ -306,7 +281,7 @@ function convertLib(args: string[]) {
   return ['module', `Imported:${id}`, ['layer', 'F.Cu'], kiAt(x, y), ...shapes];
 }
 
-function convertCopperArea(args: string[]) {
+function convertCopperArea(args: string[], nets: string[]) {
   const [
     strokeWidth,
     layerId,
@@ -343,32 +318,68 @@ function convertCopperArea(args: string[]) {
   ];
 }
 
-const { nets } = input.routerRule;
-const outputObjs = [];
-nets.unshift(''); // Kicad expects net 0 to be empty
-for (let i = 0; i < nets.length; i++) {
-  outputObjs.push(['net', i, nets[i]]);
-}
-
-for (const shapeEntry of input.shape) {
-  const shape = shapeEntry.split('~');
-  if (shape[0] === 'VIA') {
-    outputObjs.push(convertVia(shape.slice(1)));
-  } else if (shape[0] === 'TRACK') {
-    outputObjs.push(...convertTrack(shape.slice(1)));
-  } else if (shape[0] === 'TEXT') {
-    outputObjs.push(convertText(shape.slice(1)));
-  } else if (shape[0] === 'ARC') {
-    outputObjs.push(convertArc(shape.slice(1)));
-  } else if (shape[0] === 'COPPERAREA') {
-    outputObjs.push(convertCopperArea(shape.slice(1)));
-  } else if (shape[0] === 'LIB') {
-    outputObjs.push(convertLib(shape.slice(1)));
-  } else {
-    console.error('Unsupported shape', shape);
+function convertShape(shape: string, nets: string[]) {
+  const [type, ...args] = shape.split('~');
+  switch (type) {
+    case 'VIA':
+      return [convertVia(args, nets)];
+    case 'TRACK':
+      return [...convertTrack(args, nets)];
+    case 'TEXT':
+      return [convertText(args)];
+    case 'ARC':
+      return [convertArc(args)];
+    case 'COPPERAREA':
+      return [convertCopperArea(args, nets)];
+    case 'LIB':
+      return [convertLib(args, nets)];
+    default:
+      console.error('Unsupported shape', type);
+      return null;
   }
 }
 
-output += outputObjs.map(encodeObject).join('\n');
-output += `)`;
-fs.writeFileSync('output.kicad_pcb', output);
+function flatten<T>(arr: T[]) {
+  return [].concat(...arr);
+}
+
+export function convertBoard(input: IEasyEDABoard) {
+  const { nets } = input.routerRule;
+  nets.unshift(''); // Kicad expects net 0 to be empty
+  const outputObjs = [
+    ...nets.map((net, idx) => ['net', idx, net]),
+    ...flatten(input.shape.map((shape) => convertShape(shape, nets)))
+  ];
+
+  let output = `
+(kicad_pcb (version 20171130) (host pcbnew "(5.0.2)-1")
+
+(page A4)
+(layers
+  (0 F.Cu signal)
+  (31 B.Cu signal)
+  (32 B.Adhes user)
+  (33 F.Adhes user)
+  (34 B.Paste user)
+  (35 F.Paste user)
+  (36 B.SilkS user)
+  (37 F.SilkS user)
+  (38 B.Mask user)
+  (39 F.Mask user)
+  (40 Dwgs.User user)
+  (41 Cmts.User user)
+  (42 Eco1.User user)
+  (43 Eco2.User user)
+  (44 Edge.Cuts user)
+  (45 Margin user)
+  (46 B.CrtYd user)
+  (47 F.CrtYd user)
+  (48 B.Fab user hide)
+  (49 F.Fab user hide)
+)
+
+${outputObjs.map(encodeObject).join('\n')}
+)
+`;
+  return output;
+}
