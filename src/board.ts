@@ -12,7 +12,10 @@ const layers: { [key: string]: string } = {
   6: 'B.Paste',
   7: 'F.Mask',
   8: 'B.Mask',
-  10: 'Edge.Cuts'
+  10: 'Edge.Cuts',
+  12: 'Cmts.User',
+  13: 'F.Fab',
+  14: 'B.Fab',
 };
 
 interface ICoordinates {
