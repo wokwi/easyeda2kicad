@@ -1,5 +1,5 @@
-import { encodeObject } from './spectra';
 import { IEasyEDABoard } from './easyeda-types';
+import { encodeObject } from './spectra';
 
 // doc: https://docs.easyeda.com/en/DocumentFormat/3-EasyEDA-PCB-File-Format/index.html#shapes
 
@@ -38,16 +38,16 @@ function kiAngle(value: string) {
   return null;
 }
 
-function kiCoords(x: string, y: string): ICoordinates {
+function kiCoords(x: string, y: string, parentCoords: ICoordinates = { x: 0, y: 0 }): ICoordinates {
   return {
-    x: kiUnits(parseFloat(x) - 4000),
-    y: kiUnits(parseFloat(y) - 3000)
+    x: kiUnits(parseFloat(x) - 4000) - parentCoords.x,
+    y: kiUnits(parseFloat(y) - 3000) - parentCoords.y
   };
 }
 
-function kiAt(x: string, y: string, angle?: string, parentCoords: ICoordinates = { x: 0, y: 0 }) {
-  const coords = kiCoords(x, y);
-  return ['at', coords.x - parentCoords.x, coords.y - parentCoords.y, kiAngle(angle)];
+function kiAt(x: string, y: string, angle?: string, parentCoords?: ICoordinates) {
+  const coords = kiCoords(x, y, parentCoords);
+  return ['at', coords.x, coords.y, kiAngle(angle)];
 }
 
 function kiStartEnd(
@@ -55,14 +55,11 @@ function kiStartEnd(
   startY: string,
   endX: string,
   endY: string,
-  parentCoords: ICoordinates = { x: 0, y: 0 }
+  parentCoords?: ICoordinates
 ) {
-  const start = kiCoords(startX, startY);
-  const end = kiCoords(endX, endY);
-  return [
-    ['start', start.x - parentCoords.x, start.y - parentCoords.y],
-    ['end', end.x - parentCoords.x, end.y - parentCoords.y]
-  ];
+  const start = kiCoords(startX, startY, parentCoords);
+  const end = kiCoords(endX, endY, parentCoords);
+  return [['start', start.x, start.y], ['end', end.x, end.y]];
 }
 
 function convertVia(args: string[], nets: string[], parentCoords?: ICoordinates) {
@@ -258,6 +255,18 @@ function convertHole(args: string[], parentCoords: ICoordinates) {
   ];
 }
 
+function convertCircle(args: string[], type = 'gr_circle', parentCoords?: ICoordinates) {
+  const [x, y, radius, strokeWidth, layer, id, locked] = args;
+  const center = kiCoords(x, y, parentCoords);
+  return [
+    type,
+    ['center', center.x, center.y],
+    ['end', center.x + kiUnits(radius), center.y + kiUnits(radius)],
+    ['layer', layers[layer]],
+    ['width', kiUnits(strokeWidth)]
+  ];
+}
+
 function convertLib(args: string[], nets: string[]) {
   const [x, y, attributes, rotation, importFlag, id, locked] = args;
   const shapeList = args
@@ -267,19 +276,21 @@ function convertLib(args: string[], nets: string[]) {
   let shapes = [];
   const coordinates = kiCoords(x, y);
   for (const shape of shapeList) {
-    const shapeParts = shape.split('~');
-    if (shapeParts[0] === 'TRACK') {
-      shapes.push(...convertTrack(shapeParts.slice(1), nets, 'fp_line', coordinates));
-    } else if (shapeParts[0] === 'TEXT') {
-      shapes.push(convertText(shapeParts.slice(1), 'fp_text', coordinates));
-    } else if (shapeParts[0] === 'ARC') {
-      shapes.push(convertFpArc(shapeParts.slice(1), coordinates));
-    } else if (shapeParts[0] === 'HOLE') {
-      shapes.push(convertHole(shapeParts.slice(1), coordinates));
-    } else if (shapeParts[0] === 'PAD') {
-      shapes.push(convertPad(shapeParts.slice(1), nets, coordinates));
+    const [type, ...args] = shape.split('~');
+    if (type === 'TRACK') {
+      shapes.push(...convertTrack(args, nets, 'fp_line', coordinates));
+    } else if (type === 'TEXT') {
+      shapes.push(convertText(args, 'fp_text', coordinates));
+    } else if (type === 'ARC') {
+      shapes.push(convertFpArc(args, coordinates));
+    } else if (type === 'HOLE') {
+      shapes.push(convertHole(args, coordinates));
+    } else if (type === 'PAD') {
+      shapes.push(convertPad(args, nets, coordinates));
+    } else if (type === 'CIRCLE') {
+      shapes.push(convertCircle(args, 'fp_circle', coordinates));
     } else {
-      console.log(shapeParts[0]);
+      console.error('Unsupported shape', type);
     }
   }
 
@@ -336,6 +347,8 @@ function convertShape(shape: string, nets: string[]) {
       return [convertArc(args)];
     case 'COPPERAREA':
       return [convertCopperArea(args, nets)];
+    case 'CIRCLE':
+      return [convertCircle(args)];
     case 'LIB':
       return [convertLib(args, nets)];
     default:
