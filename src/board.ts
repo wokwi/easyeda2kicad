@@ -8,15 +8,6 @@ const input = require('../test-pcb.json');
 let output = `
 (kicad_pcb (version 20171130) (host pcbnew "(5.0.2)-1")
 
-(general
-  (thickness 1.6)
-  (drawings 12)
-  (tracks 1187)
-  (zones 0)
-  (modules 93)
-  (nets 100)
-)
-
 (page A4)
 (layers
   (0 F.Cu signal)
@@ -40,64 +31,6 @@ let output = `
   (48 B.Fab user hide)
   (49 F.Fab user hide)
 )
-
-(setup
-  (last_trace_width 0.25)
-  (user_trace_width 0.16)
-  (trace_clearance 0.2)
-  (zone_clearance 0.508)
-  (zone_45_only no)
-  (trace_min 0.15)
-  (segment_width 0.2)
-  (edge_width 0.15)
-  (via_size 0.8)
-  (via_drill 0.4)
-  (via_min_size 0.4)
-  (via_min_drill 0.3)
-  (uvia_size 0.3)
-  (uvia_drill 0.1)
-  (uvias_allowed no)
-  (uvia_min_size 0.2)
-  (uvia_min_drill 0.1)
-  (pcb_text_width 0.3)
-  (pcb_text_size 1.5 1.5)
-  (mod_edge_width 0.15)
-  (mod_text_size 1 1)
-  (mod_text_width 0.15)
-  (pad_size 1.7 1.7)
-  (pad_drill 1)
-  (pad_to_mask_clearance 0.051)
-  (solder_mask_min_width 0.25)
-  (aux_axis_origin 0 0)
-  (visible_elements 7FFFFFFF)
-  (pcbplotparams
-    (layerselection 0x010fc_ffffffff)
-    (usegerberextensions true)
-    (usegerberattributes false)
-    (usegerberadvancedattributes false)
-    (creategerberjobfile false)
-    (excludeedgelayer true)
-    (linewidth 0.100000)
-    (plotframeref false)
-    (viasonmask false)
-    (mode 1)
-    (useauxorigin false)
-    (hpglpennumber 1)
-    (hpglpenspeed 20)
-    (hpglpendiameter 15.000000)
-    (psnegative false)
-    (psa4output false)
-    (plotreference true)
-    (plotvalue true)
-    (plotinvisibletext false)
-    (padsonsilk false)
-    (subtractmaskfromsilk false)
-    (outputformat 1)
-    (mirror false)
-    (drillshape 0)
-    (scaleselection 1)
-    (outputdirectory "gerber"))
-  )
 `;
 
 const layers = {
@@ -112,120 +45,179 @@ const layers = {
   10: 'Edge.Cuts'
 };
 
-function unitsToKicad(value: string | number) {
+interface ICoordinates {
+  x: number;
+  y: number;
+}
+
+function kiUnits(value: string | number) {
   if (typeof value === 'string') {
     value = parseFloat(value);
   }
   return value * 10 * 0.0254;
 }
 
-function kicadAt(x: string, y: string, angle?: string) {
+function kiAngle(value: string) {
+  const angle = parseFloat(value);
+  if (!isNaN(angle)) {
+    return angle > 180 ? -(360 - angle) : angle;
+  }
+  return null;
+}
+
+function kiCoords(x: string, y: string): ICoordinates {
+  return {
+    x: kiUnits(parseFloat(x) - 4000),
+    y: kiUnits(parseFloat(y) - 3000)
+  };
+}
+
+function kiAt(x: string, y: string, angle?: string, parentCoords: ICoordinates = { x: 0, y: 0 }) {
+  const coords = kiCoords(x, y);
+  return ['at', coords.x - parentCoords.x, coords.y - parentCoords.y, kiAngle(angle)];
+}
+
+function kiStartEnd(
+  startX: string,
+  startY: string,
+  endX: string,
+  endY: string,
+  parentCoords: ICoordinates = { x: 0, y: 0 }
+) {
+  const start = kiCoords(startX, startY);
+  const end = kiCoords(endX, endY);
   return [
-    'at',
-    unitsToKicad(parseFloat(x) - 4000),
-    unitsToKicad(parseFloat(y) - 3000),
-    angle != null ? parseFloat(angle) : null
+    ['start', start.x - parentCoords.x, start.y - parentCoords.y],
+    ['end', end.x - parentCoords.x, end.y - parentCoords.y]
   ];
 }
 
-function kiStartEnd(startX: string, startY: string, endX: string, endY: string) {
-  return [
-    ['start', unitsToKicad(parseFloat(startX) - 4000), unitsToKicad(parseFloat(startY) - 3000)],
-    ['end', unitsToKicad(parseFloat(endX) - 4000), unitsToKicad(parseFloat(endY) - 3000)]
-  ];
-}
-
-function convertVia(args: string[]) {
+function convertVia(args: string[], parentCoords?: ICoordinates) {
   const [x, y, diameter, net, drill, id, locked] = args;
   return [
     'via',
-    kicadAt(x, y),
-    ['size', unitsToKicad(diameter)],
-    ['drill', unitsToKicad(drill) * 2],
+    kiAt(x, y, null, parentCoords),
+    ['size', kiUnits(diameter)],
+    ['drill', kiUnits(drill) * 2],
     ['layers', 'F.Cu', 'B.Cu'],
     ['net', nets.indexOf(net)]
   ];
 }
 
-function convertTrack(args: string[], objName = 'segment') {
+function convertTrack(args: string[], objName = 'segment', parentCoords?: ICoordinates) {
   const [width, layer, net, coords, id, locked] = args;
   const netId = nets.indexOf(net);
   const coordList = coords.split(' ');
   let result = [];
   for (let i = 0; i < coordList.length - 2; i += 2) {
-    const kiStartX = unitsToKicad(parseFloat(coordList[i]) - 4000);
-    const kiStartY = unitsToKicad(parseFloat(coordList[i + 1]) - 3000);
-    const kiEndX = unitsToKicad(parseFloat(coordList[i + 2]) - 4000);
-    const kiEndY = unitsToKicad(parseFloat(coordList[i + 3]) - 3000);
     const layerName = layers[layer];
     result.push([
       objName,
-      ['start', kiStartX, kiStartY],
-      ['end', kiEndX, kiEndY],
-      ['width', unitsToKicad(width)],
+      ...kiStartEnd(
+        coordList[i],
+        coordList[i + 1],
+        coordList[i + 2],
+        coordList[i + 3],
+        parentCoords
+      ),
+      ['width', kiUnits(width)],
       ['layer', layerName],
-      netId >= 0 ? ['net', netId] : null,
+      netId > 0 ? ['net', netId] : null,
       locked === '1' ? ['status', 40000] : null
     ]);
   }
   return result;
 }
 
-function convertText(args: string[], objName = 'gr_text') {
-  const [type, x, y, lineWidth, angle, mirror, layer, net, fontSize, text] = args;
+function textLayer(layer: string, footprint: boolean, isName: boolean) {
   const layerName = layers[layer];
+  if (footprint && isName) {
+    return layerName.replace('.SilkS', '.Fab');
+  } else {
+    return layerName;
+  }
+}
+
+function convertText(args: string[], objName = 'gr_text', parentCoords?: ICoordinates) {
+  const [
+    type, // N/P/L (Name/Prefix/Label)
+    x,
+    y,
+    lineWidth,
+    angle,
+    mirror,
+    layer,
+    net,
+    fontSize,
+    text,
+    path,
+    display,
+    id,
+    font,
+    locked
+  ] = args;
+  const layerName = textLayer(layer, objName === 'fp_text', type === 'N');
+  const fontTable = {
+    'NotoSerifCJKsc-Medium': { width: 0.8, thickness: 0.3 }
+  };
+  const fontMultiplier = font in fontTable ? fontTable[font] : { width: 1, thickness: 1 };
+  const actualFontSize = kiUnits(fontSize) * fontMultiplier.width;
   return [
     objName,
     objName === 'fp_text' ? (type === 'P' ? 'reference' : 'value') : null,
     text,
-    kicadAt(x, y, angle),
+    kiAt(x, y, angle, parentCoords),
     ['layer', layerName],
+    display === 'none' ? 'hide' : null,
     [
       'effects',
       [
         'font',
-        ['size', unitsToKicad(fontSize), unitsToKicad(fontSize)],
-        ['thickness', unitsToKicad(lineWidth)]
+        ['size', actualFontSize, actualFontSize],
+        ['thickness', kiUnits(lineWidth) * fontMultiplier.thickness]
       ],
-      layerName[0] === 'B' ? ['justify', 'mirror'] : null
+      ['justify', 'left', layerName[0] === 'B' ? 'mirror' : null]
     ]
   ];
 }
 
 function convertArc(args: string[]) {
-  const [width, layer, net, drawing, _, id, locked] = args;
-  const drawingParts = drawing.split(' ');
+  const [width, layer, net, path, _, id, locked] = args;
+  const drawingParts = path.split(' ');
   const [startX, startY] = drawingParts[0].substr(1).split(',');
+  const xAxisRotation = parseFloat(drawingParts[2]);
   const [endX, endY] = drawingParts[5].split(',');
-  // TODO angle, center X / center Y ?
+  const start = kiCoords(startX, startY);
+  const end = kiCoords(endX, endY);
   return [
     'gr_arc',
-    ...kiStartEnd(startX, startY, endX, endY),
-    ['angle', 180], // TODO
-    ['width', unitsToKicad(width)],
+    ['start', (start.x + end.x) / 2, (start.y + end.y) / 2], // actually center
+    ['end', start.x, start.y],
+    ['angle', 180],
+    ['width', kiUnits(width)],
     ['layer', layers[layer]]
   ];
 }
 
-function convertFpArc(args: string[]) {
-  // "1~10~~M3952.756,2999.9998 A46.9945,46.9945 0 1 1 4046.7437,2999.9998~~gge276~0",
-  const [width, layer, net, drawing, _, id, locked] = args;
-  const drawingParts = drawing.split(' ');
+function convertFpArc(args: string[], parentCoords: ICoordinates) {
+  const [width, layer, net, path, _, id, locked] = args;
+  const drawingParts = path.split(' ');
   const [startX, startY] = drawingParts.slice(1, 3);
   const [endX, endY] = drawingParts.slice(9);
-  // TODO angle, center X / center Y ?
-  // M4046.7437,2999.9998 A46.9945,46.9945 0 1 1 3952.756,2999.9998
-  // rx ry x-axis-rotation large-arc-flag sweep-flag x y
+  const xAxisRotation = parseFloat(drawingParts[6]);
+  const start = kiCoords(startX, startY);
+  const end = kiCoords(endX, endY);
   return [
     'fp_arc',
-    ...kiStartEnd(startX, startY, endX, endY),
-    ['angle', 180], // TODO
-    ['width', unitsToKicad(width)],
+    ['start', (start.x + end.x) / 2, (start.y + end.y) / 2], // actually center
+    ['end', end.x, end.y],
+    ['angle', 180],
+    ['width', kiUnits(width)],
     ['layer', layers[layer]]
   ];
 }
 
-function convertPad(args: string[]) {
+function convertPad(args: string[], parentCoords: ICoordinates) {
   const [
     shape,
     x,
@@ -243,6 +235,7 @@ function convertPad(args: string[]) {
     plated,
     locked
   ] = args;
+  // TODO figure out angle from points
   const shapes = {
     ELLIPSE: 'circle',
     RECT: 'rect',
@@ -250,16 +243,38 @@ function convertPad(args: string[]) {
     POLYGON: 'custom'
   };
   const netId = nets.indexOf(net);
-  const netAttr = '';
+  const drill = kiUnits(holeRadius);
+  const layers = {
+    1: ['F.Cu', 'F.Paste', 'F.Mask'],
+    2: ['B.Cu', 'B.Paste', 'B.Mask'],
+    11: ['*.Cu', '*.Paste', '*.Mask']
+  };
+  const padNum = parseInt(num, 10);
   return [
     'pad',
-    parseInt(num, 10),
-    'smd',
+    isNaN(padNum) ? num : padNum,
+    drill > 0 ? 'thru_hole' : 'smd',
     shapes[shape],
-    kicadAt(x, y),
-    ['size', 0.875, 0.95],
-    ['layers', 'F.Cu', 'F.Paste', 'F.Mask']
-    //net ? ` (net ${netId} "${net}")` : '';
+    kiAt(x, y, null, parentCoords),
+    ['size', kiUnits(width), kiUnits(height)],
+    ['layers', ...layers[layerId]],
+    drill ? ['drill', drill * 2] : null,
+    netId > 0 ? ['net', netId, net] : null
+  ];
+}
+
+function convertHole(args: string[], parentCoords: ICoordinates) {
+  const [x, y, radius, id, locked] = args;
+  const size = kiUnits(radius) * 2;
+  return [
+    'pad',
+    '',
+    'np_thru_hole',
+    'circle',
+    kiAt(x, y, null, parentCoords),
+    ['size', size, size],
+    ['drill', size],
+    ['layers', '*.Cu', '*.Mask']
   ];
 }
 
@@ -270,28 +285,67 @@ function convertLib(args: string[]) {
     .split('#@$')
     .slice(1);
   let shapes = [];
+  const coordinates = kiCoords(x, y);
   for (const shape of shapeList) {
     const shapeParts = shape.split('~');
     if (shapeParts[0] === 'TRACK') {
-      shapes.push(...convertTrack(shapeParts.slice(1), 'fp_line'));
+      shapes.push(...convertTrack(shapeParts.slice(1), 'fp_line', coordinates));
     } else if (shapeParts[0] === 'TEXT') {
-      shapes.push(convertText(shapeParts.slice(1), 'fp_text'));
+      shapes.push(convertText(shapeParts.slice(1), 'fp_text', coordinates));
     } else if (shapeParts[0] === 'ARC') {
-      shapes.push(convertFpArc(shapeParts.slice(1)));
+      shapes.push(convertFpArc(shapeParts.slice(1), coordinates));
     } else if (shapeParts[0] === 'HOLE') {
-      // TODO
+      shapes.push(convertHole(shapeParts.slice(1), coordinates));
     } else if (shapeParts[0] === 'PAD') {
-      shapes.push(convertPad(shapeParts.slice(1)));
+      shapes.push(convertPad(shapeParts.slice(1), coordinates));
     } else {
       console.log(shapeParts[0]);
     }
   }
 
-  return ['module', `Imported:${id}`, ['layer', 'F.Cu'], kicadAt(x, y), ...shapes];
+  return ['module', `Imported:${id}`, ['layer', 'F.Cu'], kiAt(x, y), ...shapes];
+}
+
+function convertCopperArea(args: string[]) {
+  const [
+    strokeWidth,
+    layerId,
+    net,
+    points,
+    clearanceWidth,
+    fillStyle,
+    id,
+    thermal,
+    keepIsland,
+    copperZone,
+    locked
+  ] = args;
+  const netId = nets.indexOf(net);
+  // fill style: solid/none
+  // id: gge27
+  // thermal: spoke/direct
+  const pointList = points.split(' ').filter((p) => !isNaN(parseFloat(p)));
+  const polygonPoints = [];
+  for (let i = 0; i < pointList.length; i += 2) {
+    const coords = kiCoords(pointList[i], pointList[i + 1]);
+    polygonPoints.push(['xy', coords.x, coords.y]);
+  }
+  return [
+    'zone',
+    ['net', netId],
+    ['net_name', net],
+    ['layer', layers[layerId]],
+    ['hatch', 'edge', 0.508],
+    ['connect_pads', ['clearance', kiUnits(clearanceWidth)]],
+    // TODO (min_thickness 0.254)
+    // TODO (fill yes (arc_segments 32) (thermal_gap 0.508) (thermal_bridge_width 0.508))
+    ['polygon', ['pts', ...polygonPoints]]
+  ];
 }
 
 const { nets } = input.routerRule;
 const outputObjs = [];
+nets.unshift(''); // Kicad expects net 0 to be empty
 for (let i = 0; i < nets.length; i++) {
   outputObjs.push(['net', i, nets[i]]);
 }
@@ -300,21 +354,18 @@ for (const shapeEntry of input.shape) {
   const shape = shapeEntry.split('~');
   if (shape[0] === 'VIA') {
     outputObjs.push(convertVia(shape.slice(1)));
-  }
-  if (shape[0] === 'TRACK') {
+  } else if (shape[0] === 'TRACK') {
     outputObjs.push(...convertTrack(shape.slice(1)));
-  }
-  if (shape[0] === 'TEXT') {
+  } else if (shape[0] === 'TEXT') {
     outputObjs.push(convertText(shape.slice(1)));
-  }
-  if (shape[0] === 'ARC') {
+  } else if (shape[0] === 'ARC') {
     outputObjs.push(convertArc(shape.slice(1)));
-  }
-  if (shape[0] === 'COPPERAREA') {
-    // TODO
-  }
-  if (shape[0] === 'LIB') {
+  } else if (shape[0] === 'COPPERAREA') {
+    outputObjs.push(convertCopperArea(shape.slice(1)));
+  } else if (shape[0] === 'LIB') {
     outputObjs.push(convertLib(shape.slice(1)));
+  } else {
+    console.error('Unsupported shape', shape);
   }
 }
 

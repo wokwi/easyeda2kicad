@@ -7,14 +7,18 @@ export function encodeString(str: string) {
   return `"${str.replace(/"/g, '""')}"`;
 }
 
-export function encodeItem(item: ISpectraList | string | number) {
-  if (typeof item === 'string') {
-    return encodeString(item);
+function encodeNumber(value: number) {
+  return (Math.round(value * 1000 + Number.EPSILON) / 1000).toString();
+}
+
+export function encodeValue(value: ISpectraList | string | number) {
+  if (typeof value === 'string') {
+    return encodeString(value);
   }
-  if (typeof item === 'number') {
-    return item.toString();
+  if (typeof value === 'number') {
+    return encodeNumber(value);
   }
-  return encodeObject(item);
+  return encodeObject(value);
 }
 
 export function encodeObject(object: ISpectraList): string {
@@ -22,7 +26,7 @@ export function encodeObject(object: ISpectraList): string {
     '(' +
     object
       .filter((it) => it !== null)
-      .map(encodeItem)
+      .map(encodeValue)
       .join(' ') +
     ')'
   );
