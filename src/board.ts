@@ -297,12 +297,12 @@ function convertLib(args: string[], nets: string[]) {
   return ['module', `Imported:${id}`, ['layer', 'F.Cu'], kiAt(x, y), ...shapes];
 }
 
-function convertCopperArea(args: string[], nets: string[]) {
+export function convertCopperArea(args: string[], nets: string[]) {
   const [
     strokeWidth,
     layerId,
     net,
-    points,
+    path,
     clearanceWidth,
     fillStyle,
     id,
@@ -315,7 +315,7 @@ function convertCopperArea(args: string[], nets: string[]) {
   // fill style: solid/none
   // id: gge27
   // thermal: spoke/direct
-  const pointList = points.split(' ').filter((p) => !isNaN(parseFloat(p)));
+  const pointList = path.split(/[ ,LM]/).filter((p) => !isNaN(parseFloat(p)));
   const polygonPoints = [];
   for (let i = 0; i < pointList.length; i += 2) {
     const coords = kiCoords(pointList[i], pointList[i + 1]);
