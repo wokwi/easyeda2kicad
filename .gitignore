@@ -1,0 +1,5 @@
+node_modules
+*.log
+*.kicad_pcb
+*.pro
+fp-info-cache
