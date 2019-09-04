@@ -1,4 +1,5 @@
 node_modules
+dist
 *.log
 *.kicad_pcb
 *.pro
