@@ -194,6 +194,16 @@ function convertFpArc(args: string[], parentCoords: ICoordinates) {
   ];
 }
 
+function getDrill(holeRadius: number, holeLength: number) {
+  if (holeRadius && holeLength) {
+    return ['drill', 'oval', holeRadius * 2, holeLength];
+  }
+  if (holeRadius) {
+    return ['drill', holeRadius * 2];
+  }
+  return null;
+}
+
 function convertPad(args: string[], nets: string[], parentCoords: ICoordinates) {
   const [
     shape,
@@ -206,13 +216,13 @@ function convertPad(args: string[], nets: string[], parentCoords: ICoordinates) 
     num,
     holeRadius,
     points,
+    rotation,
     id,
     holeLength,
     holePoints,
     plated,
     locked
   ] = args;
-  // TODO figure out angle from points
   const shapes: { [key: string]: string } = {
     ELLIPSE: 'circle',
     RECT: 'rect',
@@ -220,7 +230,6 @@ function convertPad(args: string[], nets: string[], parentCoords: ICoordinates) 
     POLYGON: 'custom'
   };
   const netId = nets.indexOf(net);
-  const drill = kiUnits(holeRadius);
   const layers: { [key: string]: string[] } = {
     1: ['F.Cu', 'F.Paste', 'F.Mask'],
     2: ['B.Cu', 'B.Paste', 'B.Mask'],
@@ -230,12 +239,12 @@ function convertPad(args: string[], nets: string[], parentCoords: ICoordinates) 
   return [
     'pad',
     isNaN(padNum) ? num : padNum,
-    drill > 0 ? 'thru_hole' : 'smd',
+    kiUnits(holeRadius) > 0 ? 'thru_hole' : 'smd',
     shapes[shape],
-    kiAt(x, y, null, parentCoords),
+    kiAt(x, y, rotation, parentCoords),
     ['size', kiUnits(width), kiUnits(height)],
     ['layers', ...layers[layerId]],
-    drill ? ['drill', drill * 2] : null,
+    getDrill(kiUnits(holeRadius), kiUnits(holeLength)),
     netId > 0 ? ['net', netId, net] : null
   ];
 }
