@@ -9,7 +9,7 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
-    "prepublish": "yarn build",
+    "prepare": "npm run build",
     "start": "ts-node src/main.ts",
     "test": "jest"
   },
@@ -26,6 +26,6 @@
   },
   "engines": {
     "node": ">= 8.0.0",
-    "yarn": ">= 1.5.1"
+    "npm": ">= 5.0.0"
   }
 }
