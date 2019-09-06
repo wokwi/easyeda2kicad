@@ -1,5 +1,6 @@
 import { IEasyEDABoard } from './easyeda-types';
 import { encodeObject } from './spectra';
+import { computeArc } from './svg-arc';
 
 // doc: https://docs.easyeda.com/en/DocumentFormat/3-EasyEDA-PCB-File-Format/index.html#shapes
 
@@ -171,11 +172,22 @@ export function convertArc(args: string[]) {
   const [rx, ry, xAxisRotation, largeArc, sweep, endX, endY] = arcParams.split(' ');
   const start = kiCoords(startX, startY);
   const end = kiCoords(endX, endY);
+  const { cx, cy, extent } = computeArc(
+    start.x,
+    start.y,
+    kiUnits(rx),
+    kiUnits(ry),
+    parseFloat(xAxisRotation),
+    largeArc === '1',
+    sweep === '1',
+    end.x,
+    end.y
+  );
   return [
     'gr_arc',
-    ['start', (start.x + end.x) / 2, (start.y + end.y) / 2], // actually center
+    ['start', cx, cy], // actually center
     ['end', start.x, start.y],
-    ['angle', 180],
+    ['angle', Math.abs(extent)],
     ['width', kiUnits(width)],
     ['layer', layers[layer]]
   ];

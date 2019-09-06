@@ -9,7 +9,3 @@ Convert EasyEDA PCBs to KiCad format
 ```
 easyeda2kicad <input.json> [output.kicad_pcb]
 ```
-
-## Known Issues
-
-- Arc conversion is incomplete
