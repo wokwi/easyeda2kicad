@@ -62,6 +62,10 @@ function kiStartEnd(
   return [['start', start.x, start.y], ['end', end.x, end.y]];
 }
 
+function isCopper(layerName: string) {
+  return layerName.endsWith('.Cu');
+}
+
 function convertVia(args: string[], nets: string[], parentCoords?: ICoordinates) {
   const [x, y, diameter, net, drill, id, locked] = args;
   return [
@@ -74,7 +78,7 @@ function convertVia(args: string[], nets: string[], parentCoords?: ICoordinates)
   ];
 }
 
-function convertTrack(
+export function convertTrack(
   args: string[],
   nets: string[],
   objName = 'segment',
@@ -84,10 +88,11 @@ function convertTrack(
   const netId = nets.indexOf(net);
   const coordList = coords.split(' ');
   let result = [];
+  const layerName = layers[layer];
+  const lineType = objName === 'segment' && !isCopper(layerName) ? 'gr_line' : objName;
   for (let i = 0; i < coordList.length - 2; i += 2) {
-    const layerName = layers[layer];
     result.push([
-      objName,
+      lineType,
       ...kiStartEnd(
         coordList[i],
         coordList[i + 1],

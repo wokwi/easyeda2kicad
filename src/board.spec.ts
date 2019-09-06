@@ -1,4 +1,34 @@
-import { convertArc, convertCopperArea } from './board';
+import { convertArc, convertCopperArea, convertTrack } from './board';
+
+function removeNulls(a: string[]) {
+  return a.filter((e) => e != null);
+}
+
+describe('convertTrack', () => {
+  it('should convert copper tracks into segments', () => {
+    const result = convertTrack(
+      ['0.63', '1', 'GND', '4000 3000 4000 3030', 'gge606', '0'],
+      ['', 'GND']
+    );
+    expect(result.map(removeNulls)).toEqual([
+      [
+        'segment',
+        ['start', 0, 0],
+        ['end', 0, 7.62],
+        ['width', 0.16002],
+        ['layer', 'F.Cu'],
+        ['net', 1]
+      ]
+    ]);
+  });
+
+  it('should convert non-copper layer tracks into gr_lines', () => {
+    const result = convertTrack(['0.63', '10', 'GND', '4000 3000 4000 3030', 'gge606', '0'], ['']);
+    expect(result.map(removeNulls)).toEqual([
+      ['gr_line', ['start', 0, 0], ['end', 0, 7.62], ['width', 0.16002], ['layer', 'Edge.Cuts']]
+    ]);
+  });
+});
 
 describe('convertArc', () => {
   it('should convert arcs', () => {
