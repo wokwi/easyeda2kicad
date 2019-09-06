@@ -54,6 +54,24 @@ describe('convertArc', () => {
       ['layer', 'Edge.Cuts']
     ]);
   });
+
+  it('should support negative numbers in arc path', () => {
+    expect(
+      encodeObject(
+        convertArc([
+          '0.6',
+          '4',
+          '',
+          'M 3977.3789 3026.2151 A 28.4253 28.4253 -150 1 1 3977.6376 3026.643',
+          '',
+          'gge66',
+          '0'
+        ])
+      )
+    ).toEqual(
+      '(gr_arc (start 0.465 2.978) (end -5.746 6.659) (angle 358.992) (width 0.152) (layer "B.SilkS"))'
+    );
+  });
 });
 
 describe('convertCopperArea', () => {

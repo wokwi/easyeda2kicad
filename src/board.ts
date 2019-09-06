@@ -163,15 +163,15 @@ function convertText(args: string[], objName = 'gr_text', parentCoords?: ICoordi
   ];
 }
 
-export function convertArc(args: string[]) {
+export function convertArc(args: string[], objName = 'gr_arc', parentCoords?: ICoordinates) {
   const [width, layer, net, path, _, id, locked] = args;
-  const [match, startPoint, arcParams] = /^M\s*([\d.\s]+)A\s*([\d.\s]+)$/.exec(
+  const [match, startPoint, arcParams] = /^M\s*([-\d.\s]+)A\s*([-\d.\s]+)$/.exec(
     path.replace(/[,\s]+/g, ' ')
   );
   const [startX, startY] = startPoint.split(' ');
   const [rx, ry, xAxisRotation, largeArc, sweep, endX, endY] = arcParams.split(' ');
-  const start = kiCoords(startX, startY);
-  const end = kiCoords(endX, endY);
+  const start = kiCoords(startX, startY, parentCoords);
+  const end = kiCoords(endX, endY, parentCoords);
   const { cx, cy, extent } = computeArc(
     start.x,
     start.y,
@@ -184,28 +184,10 @@ export function convertArc(args: string[]) {
     end.y
   );
   return [
-    'gr_arc',
+    objName,
     ['start', cx, cy], // actually center
     ['end', start.x, start.y],
     ['angle', Math.abs(extent)],
-    ['width', kiUnits(width)],
-    ['layer', layers[layer]]
-  ];
-}
-
-function convertFpArc(args: string[], parentCoords: ICoordinates) {
-  const [width, layer, net, path, _, id, locked] = args;
-  const drawingParts = path.split(' ');
-  const [startX, startY] = drawingParts.slice(1, 3);
-  const [endX, endY] = drawingParts.slice(9);
-  const xAxisRotation = parseFloat(drawingParts[6]);
-  const start = kiCoords(startX, startY);
-  const end = kiCoords(endX, endY);
-  return [
-    'fp_arc',
-    ['start', (start.x + end.x) / 2, (start.y + end.y) / 2], // actually center
-    ['end', end.x, end.y],
-    ['angle', 180],
     ['width', kiUnits(width)],
     ['layer', layers[layer]]
   ];
@@ -308,7 +290,7 @@ function convertLib(args: string[], nets: string[]) {
     } else if (type === 'TEXT') {
       shapes.push(convertText(args, 'fp_text', coordinates));
     } else if (type === 'ARC') {
-      shapes.push(convertFpArc(args, coordinates));
+      shapes.push(convertArc(args, 'fp_arc', coordinates));
     } else if (type === 'HOLE') {
       shapes.push(convertHole(args, coordinates));
     } else if (type === 'PAD') {
