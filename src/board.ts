@@ -4,20 +4,27 @@ import { computeArc } from './svg-arc';
 
 // doc: https://docs.easyeda.com/en/DocumentFormat/3-EasyEDA-PCB-File-Format/index.html#shapes
 
-const layers: { [key: string]: string } = {
-  1: 'F.Cu',
-  2: 'B.Cu',
-  3: 'F.SilkS',
-  4: 'B.SilkS',
-  5: 'F.Paste',
-  6: 'B.Paste',
-  7: 'F.Mask',
-  8: 'B.Mask',
-  10: 'Edge.Cuts',
-  12: 'Cmts.User',
-  13: 'F.Fab',
-  14: 'B.Fab'
-};
+function getLayerName(id: string) {
+  const layers: { [key: string]: string } = {
+    1: 'F.Cu',
+    2: 'B.Cu',
+    3: 'F.SilkS',
+    4: 'B.SilkS',
+    5: 'F.Paste',
+    6: 'B.Paste',
+    7: 'F.Mask',
+    8: 'B.Mask',
+    10: 'Edge.Cuts',
+    12: 'Cmts.User',
+    13: 'F.Fab',
+    14: 'B.Fab',
+    15: 'Dwgs.User'
+  };
+  if (id in layers) {
+    return layers[id];
+  }
+  throw new Error(`Missing layer id: ${id}`);
+}
 
 interface ICoordinates {
   x: number;
@@ -89,7 +96,7 @@ export function convertTrack(
   const netId = nets.indexOf(net);
   const coordList = coords.split(' ');
   let result = [];
-  const layerName = layers[layer];
+  const layerName = getLayerName(layer);
   const lineType = objName === 'segment' && !isCopper(layerName) ? 'gr_line' : objName;
   for (let i = 0; i < coordList.length - 2; i += 2) {
     result.push([
@@ -111,7 +118,7 @@ export function convertTrack(
 }
 
 function textLayer(layer: string, footprint: boolean, isName: boolean) {
-  const layerName = layers[layer];
+  const layerName = getLayerName(layer);
   if (footprint && isName) {
     return layerName.replace('.SilkS', '.Fab');
   } else {
@@ -189,7 +196,7 @@ export function convertArc(args: string[], objName = 'gr_arc', parentCoords?: IC
     ['end', start.x, start.y],
     ['angle', Math.abs(extent)],
     ['width', kiUnits(width)],
-    ['layer', layers[layer]]
+    ['layer', getLayerName(layer)]
   ];
 }
 
@@ -270,7 +277,7 @@ function convertCircle(args: string[], type = 'gr_circle', parentCoords?: ICoord
     type,
     ['center', center.x, center.y],
     ['end', center.x + kiUnits(radius), center.y + kiUnits(radius)],
-    ['layer', layers[layer]],
+    ['layer', getLayerName(layer)],
     ['width', kiUnits(strokeWidth)]
   ];
 }
@@ -333,7 +340,7 @@ export function convertCopperArea(args: string[], nets: string[]) {
     'zone',
     ['net', netId],
     ['net_name', net],
-    ['layer', layers[layerId]],
+    ['layer', getLayerName(layerId)],
     ['hatch', 'edge', 0.508],
     ['connect_pads', ['clearance', kiUnits(clearanceWidth)]],
     // TODO (min_thickness 0.254)

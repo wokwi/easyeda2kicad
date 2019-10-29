@@ -23,6 +23,12 @@ describe('convertTrack', () => {
     ]);
   });
 
+  it(`should throw an error if the given layer number doesn't exist`, () => {
+    const fn = () =>
+      convertTrack(['0.63', '999', 'GND', '4000 3000 4000 3030', 'gge606', '0'], ['', 'GND']);
+    expect(fn).toThrow('Missing layer id: 999');
+  });
+
   it('should convert non-copper layer tracks into gr_lines', () => {
     const result = convertTrack(['0.63', '10', 'GND', '4000 3000 4000 3030', 'gge606', '0'], ['']);
     expect(result.map(removeNulls)).toEqual([
