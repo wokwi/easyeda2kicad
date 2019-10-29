@@ -305,7 +305,7 @@ function convertLib(args: string[], nets: string[]) {
     } else if (type === 'CIRCLE') {
       shapes.push(convertCircle(args, 'fp_circle', coordinates));
     } else {
-      console.error('Unsupported shape', type);
+      console.warn(`Warning: unsupported shape ${type} in footprint ${id}`);
     }
   }
 
@@ -367,7 +367,7 @@ function convertShape(shape: string, nets: string[]) {
     case 'LIB':
       return [convertLib(args, nets)];
     default:
-      console.error('Unsupported shape', type);
+      console.warn(`Warning: unsupported shape ${type}`);
       return null;
   }
 }
@@ -382,7 +382,7 @@ export function convertBoard(input: IEasyEDABoard) {
   const outputObjs = [
     ...nets.map((net, idx) => ['net', idx, net]),
     ...flatten(input.shape.map((shape) => convertShape(shape, nets)))
-  ];
+  ].filter((obj) => obj != null);
 
   let output = `
 (kicad_pcb (version 20171130) (host pcbnew "(5.0.2)-1")
