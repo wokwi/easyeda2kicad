@@ -11,7 +11,7 @@ export interface IEasyEDABoard {
   preference: Preference;
   DRCRULE: Drcrule;
   routerRule: RouterRule;
-  netColors: NetColors;
+  netColors: {};
 }
 
 export interface BBox {
@@ -38,15 +38,13 @@ export interface Default {
 export interface Head {
   docType: string;
   editorVersion: string;
-  c_para: NetColors;
+  c_para: {};
   hasIdFlag: boolean;
   x: string;
   y: string;
   importFlag: number;
   transformList: string;
 }
-
-export interface NetColors {}
 
 export interface Preference {
   hideFootprints: string;

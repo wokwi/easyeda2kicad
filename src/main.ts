@@ -9,6 +9,7 @@ if (process.argv.length < 3) {
 }
 
 if (process.argv[2] === '-v') {
+  // tslint:disable-next-line
   console.log(`Version ${require('../package.json').version}`);
   process.exit(0);
 }

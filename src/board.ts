@@ -98,7 +98,7 @@ export function convertTrack(
   const [width, layer, net, coords, id, locked] = args;
   const netId = nets.indexOf(net);
   const coordList = coords.split(' ');
-  let result = [];
+  const result = [];
   const layerName = getLayerName(layer);
   const lineType = objName === 'segment' && !isCopper(layerName) ? 'gr_line' : objName;
   for (let i = 0; i < coordList.length - 2; i += 2) {
@@ -296,22 +296,22 @@ export function convertLib(args: string[], nets: string[]) {
   for (let i = 0; i < attrList.length; i += 2) {
     attrs[attrList[i]] = attrList[i + 1];
   }
-  let shapes = [];
+  const shapes = [];
   const coordinates = kiCoords(x, y);
   for (const shape of shapeList) {
-    const [type, ...args] = shape.split('~');
+    const [type, ...shapeArgs] = shape.split('~');
     if (type === 'TRACK') {
-      shapes.push(...convertTrack(args, nets, 'fp_line', coordinates));
+      shapes.push(...convertTrack(shapeArgs, nets, 'fp_line', coordinates));
     } else if (type === 'TEXT') {
-      shapes.push(convertText(args, 'fp_text', coordinates));
+      shapes.push(convertText(shapeArgs, 'fp_text', coordinates));
     } else if (type === 'ARC') {
-      shapes.push(convertArc(args, 'fp_arc', coordinates));
+      shapes.push(convertArc(shapeArgs, 'fp_arc', coordinates));
     } else if (type === 'HOLE') {
-      shapes.push(convertHole(args, coordinates));
+      shapes.push(convertHole(shapeArgs, coordinates));
     } else if (type === 'PAD') {
-      shapes.push(convertPad(args, nets, coordinates));
+      shapes.push(convertPad(shapeArgs, nets, coordinates));
     } else if (type === 'CIRCLE') {
-      shapes.push(convertCircle(args, 'fp_circle', coordinates));
+      shapes.push(convertCircle(shapeArgs, 'fp_circle', coordinates));
     } else {
       console.warn(`Warning: unsupported shape ${type} in footprint ${id}`);
     }
@@ -401,7 +401,7 @@ export function convertBoard(input: IEasyEDABoard) {
     ...flatten(input.shape.map((shape) => convertShape(shape, nets)))
   ].filter((obj) => obj != null);
 
-  let output = `
+  const output = `
 (kicad_pcb (version 20171130) (host pcbnew "(5.0.2)-1")
 
 (page A4)

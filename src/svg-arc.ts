@@ -3,7 +3,7 @@
  *
  * Algorithm taken from org.apache.batik.ext.awt.geom.ExtendedGeneralPath::computeArc()
  * with slight adaptations.
- * 
+ *
  * Original copyright notice follows.
  */
 
@@ -15,8 +15,8 @@ function toDegrees(n: number) {
   return (n / Math.PI) * 180;
 }
 
- /*
-   Copyright 2001-2003  The Apache Software Foundation 
+/*
+   Copyright 2001-2003  The Apache Software Foundation
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ export function computeArc(
   //
   // Step 2 : Compute (cx1, cy1)
   //
-  let sign = largeArcFlag == sweepFlag ? -1 : 1;
+  let sign = largeArcFlag === sweepFlag ? -1 : 1;
   let sq = (Prx * Pry - Prx * Py1 - Pry * Px1) / (Prx * Py1 + Pry * Px1);
   sq = sq < 0 ? 0 : sq;
   const coef = sign * Math.sqrt(sq);
