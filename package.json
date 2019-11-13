@@ -17,12 +17,12 @@
     "dist"
   ],
   "devDependencies": {
-    "@types/jest": "^24.0.18",
-    "@types/node": "^12.7.3",
+    "@types/jest": "^24.0.23",
+    "@types/node": "^12.12.7",
     "jest": "^24.9.0",
     "ts-jest": "^24.1.0",
-    "ts-node": "^8.3.0",
-    "typescript": "^3.6.2"
+    "ts-node": "^8.5.0",
+    "typescript": "^3.7.2"
   },
   "engines": {
     "node": ">= 8.0.0",
