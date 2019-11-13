@@ -67,7 +67,10 @@ function kiStartEnd(
 ) {
   const start = kiCoords(startX, startY, parentCoords);
   const end = kiCoords(endX, endY, parentCoords);
-  return [['start', start.x, start.y], ['end', end.x, end.y]];
+  return [
+    ['start', start.x, start.y],
+    ['end', end.x, end.y]
+  ];
 }
 
 function isCopper(layerName: string) {
@@ -377,7 +380,7 @@ function flatten<T>(arr: T[]) {
 }
 
 export function convertBoard(input: IEasyEDABoard) {
-  const { nets } = input.routerRule;
+  const { nets } = input.routerRule || { nets: [] as string[] };
   nets.unshift(''); // Kicad expects net 0 to be empty
   const outputObjs = [
     ...nets.map((net, idx) => ['net', idx, net]),
