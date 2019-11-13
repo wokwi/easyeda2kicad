@@ -1,4 +1,4 @@
-import { convertArc, convertCopperArea, convertTrack } from './board';
+import { convertArc, convertCopperArea, convertTrack, convertLib } from './board';
 import { encodeObject } from './spectra';
 
 function removeNulls(a: string[]) {
@@ -117,5 +117,40 @@ describe('convertCopperArea', () => {
         ['pts', ['xy', 12.7, 12.7], ['xy', 41.656, 12.7], ['xy', 40.64, 30.48], ['xy', 12.7, 25.4]]
       ]
     ]);
+  });
+
+  describe('convertLib()', () => {
+    it('should include the footprint name in the exported module', () => {
+      expect(
+        convertLib(
+          [
+            '4228',
+            '3187.5',
+            'package`1206`',
+            '270',
+            '',
+            'gge12',
+            '2',
+            'a8f323e85d754372811837f27f204a01',
+            '1564555550',
+            '0'
+          ],
+          []
+        )
+      ).toEqual([
+        'module',
+        'easyeda:1206',
+        ['layer', 'F.Cu'],
+        ['at', 57.912, 47.625, null],
+        [
+          'fp_text',
+          'user',
+          'gge12',
+          ['at', 0, 0],
+          ['layer', 'Cmts.User'],
+          ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+        ]
+      ]);
+    });
   });
 });

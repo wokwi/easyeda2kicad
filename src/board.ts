@@ -285,12 +285,17 @@ function convertCircle(args: string[], type = 'gr_circle', parentCoords?: ICoord
   ];
 }
 
-function convertLib(args: string[], nets: string[]) {
+export function convertLib(args: string[], nets: string[]) {
   const [x, y, attributes, rotation, importFlag, id, locked] = args;
   const shapeList = args
     .join('~')
     .split('#@$')
     .slice(1);
+  const attrList = attributes.split('`');
+  const attrs: { [key: string]: string } = {};
+  for (let i = 0; i < attrList.length; i += 2) {
+    attrs[attrList[i]] = attrList[i + 1];
+  }
   let shapes = [];
   const coordinates = kiCoords(x, y);
   for (const shape of shapeList) {
@@ -311,8 +316,17 @@ function convertLib(args: string[], nets: string[]) {
       console.warn(`Warning: unsupported shape ${type} in footprint ${id}`);
     }
   }
+  shapes.push([
+    'fp_text',
+    'user',
+    id,
+    ['at', 0, 0],
+    ['layer', 'Cmts.User'],
+    ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+  ]);
 
-  return ['module', `Imported:${id}`, ['layer', 'F.Cu'], kiAt(x, y), ...shapes];
+  const footprintName = `easyeda:${attrs.package || id}`;
+  return ['module', footprintName, ['layer', 'F.Cu'], kiAt(x, y), ...shapes];
 }
 
 export function convertCopperArea(args: string[], nets: string[]) {
