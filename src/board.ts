@@ -31,6 +31,10 @@ interface ICoordinates {
   y: number;
 }
 
+interface IParentTransform extends ICoordinates {
+  angle: number;
+}
+
 function kiUnits(value: string | number) {
   if (typeof value === 'string') {
     value = parseFloat(value);
@@ -38,24 +42,39 @@ function kiUnits(value: string | number) {
   return value * 10 * 0.0254;
 }
 
-function kiAngle(value: string) {
-  const angle = parseFloat(value);
+function kiAngle(value: string, parentAngle?: number) {
+  const angle = parseFloat(value) + (parentAngle || 0);
   if (!isNaN(angle)) {
     return angle > 180 ? -(360 - angle) : angle;
   }
   return null;
 }
 
-function kiCoords(x: string, y: string, parentCoords: ICoordinates = { x: 0, y: 0 }): ICoordinates {
+function rotate({ x, y }: ICoordinates, degrees: number) {
+  const radians = (degrees / 180) * Math.PI;
   return {
-    x: kiUnits(parseFloat(x) - 4000) - parentCoords.x,
-    y: kiUnits(parseFloat(y) - 3000) - parentCoords.y
+    x: x * Math.cos(radians) + y * Math.sin(radians),
+    y: x * Math.sin(radians) + y * Math.cos(radians)
   };
 }
 
-function kiAt(x: string, y: string, angle?: string, parentCoords?: ICoordinates) {
-  const coords = kiCoords(x, y, parentCoords);
-  return ['at', coords.x, coords.y, kiAngle(angle)];
+function kiCoords(
+  x: string,
+  y: string,
+  transform: IParentTransform = { x: 0, y: 0, angle: 0 }
+): ICoordinates {
+  return rotate(
+    {
+      x: kiUnits(parseFloat(x) - 4000) - transform.x,
+      y: kiUnits(parseFloat(y) - 3000) - transform.y
+    },
+    transform.angle || 0
+  );
+}
+
+function kiAt(x: string, y: string, angle?: string, transform?: IParentTransform) {
+  const coords = kiCoords(x, y, transform);
+  return ['at', coords.x, coords.y, kiAngle(angle, transform?.angle)];
 }
 
 function kiStartEnd(
@@ -63,7 +82,7 @@ function kiStartEnd(
   startY: string,
   endX: string,
   endY: string,
-  parentCoords?: ICoordinates
+  parentCoords?: IParentTransform
 ) {
   const start = kiCoords(startX, startY, parentCoords);
   const end = kiCoords(endX, endY, parentCoords);
@@ -77,7 +96,7 @@ function isCopper(layerName: string) {
   return layerName.endsWith('.Cu');
 }
 
-function convertVia(args: string[], nets: string[], parentCoords?: ICoordinates) {
+function convertVia(args: string[], nets: string[], parentCoords?: IParentTransform) {
   const [x, y, diameter, net, drill, id, locked] = args;
   return [
     'via',
@@ -93,7 +112,7 @@ export function convertTrack(
   args: string[],
   nets: string[],
   objName = 'segment',
-  parentCoords?: ICoordinates
+  parentCoords?: IParentTransform
 ) {
   const [width, layer, net, coords, id, locked] = args;
   const netId = nets.indexOf(net);
@@ -129,7 +148,7 @@ function textLayer(layer: string, footprint: boolean, isName: boolean) {
   }
 }
 
-function convertText(args: string[], objName = 'gr_text', parentCoords?: ICoordinates) {
+function convertText(args: string[], objName = 'gr_text', parentCoords?: IParentTransform) {
   const [
     type, // N/P/L (Name/Prefix/Label)
     x,
@@ -173,20 +192,21 @@ function convertText(args: string[], objName = 'gr_text', parentCoords?: ICoordi
   ];
 }
 
-export function convertArc(args: string[], objName = 'gr_arc', parentCoords?: ICoordinates) {
+export function convertArc(args: string[], objName = 'gr_arc', transform?: IParentTransform) {
   const [width, layer, net, path, _, id, locked] = args;
   const [match, startPoint, arcParams] = /^M\s*([-\d.\s]+)A\s*([-\d.\s]+)$/.exec(
     path.replace(/[,\s]+/g, ' ')
   );
   const [startX, startY] = startPoint.split(' ');
-  const [rx, ry, xAxisRotation, largeArc, sweep, endX, endY] = arcParams.split(' ');
-  const start = kiCoords(startX, startY, parentCoords);
-  const end = kiCoords(endX, endY, parentCoords);
+  const [svgRx, svgRy, xAxisRotation, largeArc, sweep, endX, endY] = arcParams.split(' ');
+  const start = kiCoords(startX, startY, transform);
+  const end = kiCoords(endX, endY, transform);
+  const { x: rx, y: ry } = rotate({ x: kiUnits(svgRx), y: kiUnits(svgRy) }, transform?.angle || 0);
   const { cx, cy, extent } = computeArc(
     start.x,
     start.y,
-    kiUnits(rx),
-    kiUnits(ry),
+    rx,
+    ry,
     parseFloat(xAxisRotation),
     largeArc === '1',
     sweep === '1',
@@ -213,7 +233,7 @@ function getDrill(holeRadius: number, holeLength: number) {
   return null;
 }
 
-function convertPad(args: string[], nets: string[], parentCoords: ICoordinates) {
+function convertPad(args: string[], nets: string[], transform: IParentTransform) {
   const [
     shape,
     x,
@@ -250,7 +270,7 @@ function convertPad(args: string[], nets: string[], parentCoords: ICoordinates) 
     isNaN(padNum) ? num : padNum,
     kiUnits(holeRadius) > 0 ? 'thru_hole' : 'smd',
     shapes[shape],
-    kiAt(x, y, rotation, parentCoords),
+    kiAt(x, y, rotation, transform),
     ['size', kiUnits(width), kiUnits(height)],
     ['layers', ...layers[layerId]],
     getDrill(kiUnits(holeRadius), kiUnits(holeLength)),
@@ -258,7 +278,7 @@ function convertPad(args: string[], nets: string[], parentCoords: ICoordinates) 
   ];
 }
 
-function convertHole(args: string[], parentCoords: ICoordinates) {
+function convertHole(args: string[], transform: IParentTransform) {
   const [x, y, radius, id, locked] = args;
   const size = kiUnits(radius) * 2;
   return [
@@ -266,14 +286,14 @@ function convertHole(args: string[], parentCoords: ICoordinates) {
     '',
     'np_thru_hole',
     'circle',
-    kiAt(x, y, null, parentCoords),
+    kiAt(x, y, null, transform),
     ['size', size, size],
     ['drill', size],
     ['layers', '*.Cu', '*.Mask']
   ];
 }
 
-function convertCircle(args: string[], type = 'gr_circle', parentCoords?: ICoordinates) {
+function convertCircle(args: string[], type = 'gr_circle', parentCoords?: IParentTransform) {
   const [x, y, radius, strokeWidth, layer, id, locked] = args;
   const center = kiCoords(x, y, parentCoords);
   return [
@@ -297,21 +317,21 @@ export function convertLib(args: string[], nets: string[]) {
     attrs[attrList[i]] = attrList[i + 1];
   }
   const shapes = [];
-  const coordinates = kiCoords(x, y);
+  const transform = { ...kiCoords(x, y), angle: -kiAngle(rotation) };
   for (const shape of shapeList) {
     const [type, ...shapeArgs] = shape.split('~');
     if (type === 'TRACK') {
-      shapes.push(...convertTrack(shapeArgs, nets, 'fp_line', coordinates));
+      shapes.push(...convertTrack(shapeArgs, nets, 'fp_line', transform));
     } else if (type === 'TEXT') {
-      shapes.push(convertText(shapeArgs, 'fp_text', coordinates));
+      shapes.push(convertText(shapeArgs, 'fp_text', transform));
     } else if (type === 'ARC') {
-      shapes.push(convertArc(shapeArgs, 'fp_arc', coordinates));
+      shapes.push(convertArc(shapeArgs, 'fp_arc', transform));
     } else if (type === 'HOLE') {
-      shapes.push(convertHole(shapeArgs, coordinates));
+      shapes.push(convertHole(shapeArgs, transform));
     } else if (type === 'PAD') {
-      shapes.push(convertPad(shapeArgs, nets, coordinates));
+      shapes.push(convertPad(shapeArgs, nets, transform));
     } else if (type === 'CIRCLE') {
-      shapes.push(convertCircle(shapeArgs, 'fp_circle', coordinates));
+      shapes.push(convertCircle(shapeArgs, 'fp_circle', transform));
     } else {
       console.warn(`Warning: unsupported shape ${type} in footprint ${id}`);
     }
@@ -326,7 +346,7 @@ export function convertLib(args: string[], nets: string[]) {
   ]);
 
   const footprintName = `easyeda:${attrs.package || id}`;
-  return ['module', footprintName, ['layer', 'F.Cu'], kiAt(x, y), ...shapes];
+  return ['module', footprintName, ['layer', 'F.Cu'], kiAt(x, y, rotation), ...shapes];
 }
 
 export function convertCopperArea(args: string[], nets: string[]) {

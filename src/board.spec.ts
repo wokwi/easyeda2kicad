@@ -1,4 +1,4 @@
-import { convertArc, convertCopperArea, convertTrack, convertLib } from './board';
+import { convertArc, convertCopperArea, convertLib, convertTrack } from './board';
 import { encodeObject } from './spectra';
 
 function removeNulls(a: string[]) {
@@ -141,7 +141,7 @@ describe('convertCopperArea', () => {
         'module',
         'easyeda:1206',
         ['layer', 'F.Cu'],
-        ['at', 57.912, 47.625, null],
+        ['at', 57.912, 47.625, -90],
         [
           'fp_text',
           'user',
