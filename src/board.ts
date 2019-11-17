@@ -345,8 +345,14 @@ export function convertLib(args: string[], nets: string[]) {
     ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
   ]);
 
+  const modAttrs = [];
+  const isSmd = shapes.some((shape) => shape[0] === 'pad' && shape[2] === 'smd');
+  if (isSmd) {
+    modAttrs.push(['attr', 'smd']);
+  }
+
   const footprintName = `easyeda:${attrs.package || id}`;
-  return ['module', footprintName, ['layer', 'F.Cu'], kiAt(x, y, rotation), ...shapes];
+  return ['module', footprintName, ['layer', 'F.Cu'], kiAt(x, y, rotation), ...modAttrs, ...shapes];
 }
 
 export function convertCopperArea(args: string[], nets: string[]) {
