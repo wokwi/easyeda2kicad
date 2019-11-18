@@ -16,6 +16,10 @@ npm install -g easyeda2kicad
 easyeda2kicad <input.json> [output.kicad_pcb]
 ```
 
+## Notes
+
+Copper zones are converted but not filled. When you load the converted PCB in KiCad press "b" (or "Edit" → "Fill All Zones") to recalculate the zones.
+
 ## License
 
 Copyright (C) 2019, Uri Shaked.
