@@ -317,7 +317,7 @@ export function convertLib(args: string[], nets: string[]) {
     attrs[attrList[i]] = attrList[i + 1];
   }
   const shapes = [];
-  const transform = { ...kiCoords(x, y), angle: -kiAngle(rotation) };
+  const transform = { ...kiCoords(x, y), angle: kiAngle(rotation) };
   for (const shape of shapeList) {
     const [type, ...shapeArgs] = shape.split('~');
     if (type === 'TRACK') {

@@ -152,5 +152,52 @@ describe('convertCopperArea', () => {
         ]
       ]);
     });
+
+    it('should correctly orient footprint elements', () => {
+      const pad =
+        '#@$PAD~ELLIPSE~4010~3029~4~4~11~SEG1C~4~1.5~~270~gge181~0~~Y~0~0~0.4~4010.05,3029.95';
+      expect(
+        convertLib(
+          [
+            '4228',
+            '3187.5',
+            'package`1206`',
+            '270',
+            '',
+            'gge12',
+            '2',
+            'a8f323e85d754372811837f27f204a01',
+            '1564555550',
+            '0',
+            ...pad.split('~')
+          ],
+          []
+        )
+      ).toEqual([
+        'module',
+        'easyeda:1206',
+        ['layer', 'F.Cu'],
+        ['at', 57.912, 47.625, -90],
+        [
+          'pad',
+          4,
+          'thru_hole',
+          'circle',
+          ['at', 40.259, 55.372, 180],
+          ['size', 1.016, 1.016],
+          ['layers', '*.Cu', '*.Paste', '*.Mask'],
+          ['drill', 0.762],
+          null
+        ],
+        [
+          'fp_text',
+          'user',
+          'gge12',
+          ['at', 0, 0],
+          ['layer', 'Cmts.User'],
+          ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+        ]
+      ]);
+    });
   });
 });
