@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "author": "Uri Shaked <uri@urishaked.com>",
-  "repository": "https://github.com/urish/typewiz",
+  "repository": "https://github.com/wokwi/easyeda2kicad",
   "license": "MIT",
   "scripts": {
     "build": "tsc",
