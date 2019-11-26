@@ -183,7 +183,7 @@ describe('convertCopperArea', () => {
           4,
           'thru_hole',
           'circle',
-          ['at', 40.259, 55.372, 180],
+          ['at', 40.259, 55.372, -90],
           ['size', 1.016, 1.016],
           ['layers', '*.Cu', '*.Paste', '*.Mask'],
           ['drill', 0.762],
