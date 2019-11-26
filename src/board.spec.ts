@@ -257,4 +257,53 @@ describe('convertLib()', () => {
       ]
     ]);
   });
+
+  it('should correctly orient text inside footprints', () => {
+    const text =
+      '#@$TEXT~N~4363~3153~0.6~90~~3~~4.5~0.5pF~M 4359.51 3158.63 L 4359.71 3159.25~none~gge188~~0~';
+    expect(
+      convertLib(
+        [
+          '4228',
+          '3187.5',
+          'package`1206`',
+          '270',
+          '',
+          'gge12',
+          '2',
+          'a8f323e85d754372811837f27f204a01',
+          '1564555550',
+          '0',
+          ...text.split('~')
+        ],
+        []
+      )
+    ).toEqual([
+      'module',
+      'easyeda:1206',
+      ['layer', 'F.Cu'],
+      ['at', 57.912, 47.625, -90],
+      [
+        'fp_text',
+        'value',
+        '0.5pF',
+        ['at', 8.763, -34.29, 90],
+        ['layer', 'F.Fab'],
+        'hide',
+        [
+          'effects',
+          ['font', ['size', 1.143, 1.143], ['thickness', 0.15239999999999998]],
+          ['justify', 'left', null]
+        ]
+      ],
+      [
+        'fp_text',
+        'user',
+        'gge12',
+        ['at', 0, 0],
+        ['layer', 'Cmts.User'],
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+      ]
+    ]);
+  });
 });

@@ -74,11 +74,7 @@ function kiCoords(
 
 function kiAt(x: string, y: string, angle?: string, transform?: IParentTransform) {
   const coords = kiCoords(x, y, transform);
-  return ['at', coords.x, coords.y, kiAngle(angle, transform?.angle)];
-}
-
-function kiAtPad(x: string, y: string, angle?: string, transform?: IParentTransform) {
-  return [...kiAt(x, y, angle, transform).slice(0, 3), kiAngle(angle)];
+  return ['at', coords.x, coords.y, kiAngle(angle)];
 }
 
 function kiStartEnd(
@@ -274,7 +270,7 @@ function convertPad(args: string[], nets: string[], transform: IParentTransform)
     isNaN(padNum) ? num : padNum,
     kiUnits(holeRadius) > 0 ? 'thru_hole' : 'smd',
     shapes[shape],
-    kiAtPad(x, y, rotation, transform),
+    kiAt(x, y, rotation, transform),
     ['size', kiUnits(width), kiUnits(height)],
     ['layers', ...layers[layerId]],
     getDrill(kiUnits(holeRadius), kiUnits(holeLength)),
