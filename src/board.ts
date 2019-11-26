@@ -396,6 +396,29 @@ export function convertCopperArea(args: string[], nets: string[]) {
   ];
 }
 
+export function convertSolidRegion(args: string[], nets: string[]) {
+  const [layerId, net, path, type, id, locked] = args;
+  if (type !== 'cutout') {
+    console.warn(`Warning: unsupported SOLIDREGION type ${type}`);
+    return null;
+  }
+  const pointList = path.split(/[ ,LM]/).filter((p) => !isNaN(parseFloat(p)));
+  const polygonPoints = [];
+  for (let i = 0; i < pointList.length; i += 2) {
+    const coords = kiCoords(pointList[i], pointList[i + 1]);
+    polygonPoints.push(['xy', coords.x, coords.y]);
+  }
+  return [
+    'zone',
+    ['net', 0],
+    ['net_name', ''],
+    ['hatch', 'edge', 0.508],
+    ['layer', getLayerName(layerId)],
+    ['keepout', ['tracks', 'not_allowed'], ['vias', 'not_allowed'], ['copperpour', 'not_allowed']],
+    ['polygon', ['pts', ...polygonPoints]]
+  ];
+}
+
 function convertShape(shape: string, nets: string[]) {
   const [type, ...args] = shape.split('~');
   switch (type) {
@@ -409,6 +432,8 @@ function convertShape(shape: string, nets: string[]) {
       return [convertArc(args)];
     case 'COPPERAREA':
       return [convertCopperArea(args, nets)];
+    case 'SOLIDREGION':
+      return [convertSolidRegion(args, nets)];
     case 'CIRCLE':
       return [convertCircle(args)];
     case 'LIB':

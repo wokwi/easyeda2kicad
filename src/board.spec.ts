@@ -1,4 +1,10 @@
-import { convertArc, convertCopperArea, convertLib, convertTrack } from './board';
+import {
+  convertArc,
+  convertCopperArea,
+  convertLib,
+  convertSolidRegion,
+  convertTrack
+} from './board';
 import { encodeObject } from './spectra';
 
 function removeNulls(a: string[]) {
@@ -118,86 +124,137 @@ describe('convertCopperArea', () => {
       ]
     ]);
   });
+});
 
-  describe('convertLib()', () => {
-    it('should include the footprint name in the exported module', () => {
-      expect(
-        convertLib(
-          [
-            '4228',
-            '3187.5',
-            'package`1206`',
-            '270',
-            '',
-            'gge12',
-            '2',
-            'a8f323e85d754372811837f27f204a01',
-            '1564555550',
-            '0'
-          ],
-          []
-        )
-      ).toEqual([
-        'module',
-        'easyeda:1206',
-        ['layer', 'F.Cu'],
-        ['at', 57.912, 47.625, -90],
+describe('convertSolidRegion', () => {
+  it('should correctly parse the given SVG path', () => {
+    expect(
+      convertSolidRegion(
         [
-          'fp_text',
-          'user',
-          'gge12',
-          ['at', 0, 0],
-          ['layer', 'Cmts.User'],
-          ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
-        ]
-      ]);
-    });
-
-    it('should correctly orient footprint elements', () => {
-      const pad =
-        '#@$PAD~ELLIPSE~4010~3029~4~4~11~SEG1C~4~1.5~~270~gge181~0~~Y~0~0~0.4~4010.05,3029.95';
-      expect(
-        convertLib(
-          [
-            '4228',
-            '3187.5',
-            'package`1206`',
-            '270',
-            '',
-            'gge12',
-            '2',
-            'a8f323e85d754372811837f27f204a01',
-            '1564555550',
-            '0',
-            ...pad.split('~')
-          ],
-          []
-        )
-      ).toEqual([
-        'module',
-        'easyeda:1206',
-        ['layer', 'F.Cu'],
-        ['at', 57.912, 47.625, -90],
-        [
-          'pad',
-          4,
-          'thru_hole',
-          'circle',
-          ['at', 40.259, 55.372, -90],
-          ['size', 1.016, 1.016],
-          ['layers', '*.Cu', '*.Paste', '*.Mask'],
-          ['drill', 0.762],
-          null
+          '2',
+          'L3_2',
+          'M 4280 3173 L 4280 3127.5 L 4358.5 3128 L 4358.5 3163.625 L 4371.5 3163.625 L 4374.5 3168.625 L 4374.5 3173.125 L 4369 3173.125 L 4358.5 3173.125 L 4358.5 3179.625 L 4406.5 3179.625 L 4459 3179.5 L 4459 3252.5 L 4280.5 3253 L 4280 3173 Z',
+          'cutout',
+          'gge40',
+          '0'
         ],
+        []
+      )
+    ).toEqual([
+      'zone',
+      ['net', 0],
+      ['net_name', ''],
+      ['hatch', 'edge', 0.508],
+      ['layer', 'B.Cu'],
+      [
+        'keepout',
+        ['tracks', 'not_allowed'],
+        ['vias', 'not_allowed'],
+        ['copperpour', 'not_allowed']
+      ],
+      [
+        'polygon',
         [
-          'fp_text',
-          'user',
-          'gge12',
-          ['at', 0, 0],
-          ['layer', 'Cmts.User'],
-          ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+          'pts',
+          ['xy', 71.11999999999999, 43.942],
+          ['xy', 71.11999999999999, 32.385],
+          ['xy', 91.059, 32.512],
+          ['xy', 91.059, 41.56075],
+          ['xy', 94.36099999999999, 41.56075],
+          ['xy', 95.12299999999999, 42.830749999999995],
+          ['xy', 95.12299999999999, 43.973749999999995],
+          ['xy', 93.726, 43.973749999999995],
+          ['xy', 91.059, 43.973749999999995],
+          ['xy', 91.059, 45.62475],
+          ['xy', 103.25099999999999, 45.62475],
+          ['xy', 116.586, 45.592999999999996],
+          ['xy', 116.586, 64.13499999999999],
+          ['xy', 71.247, 64.262],
+          ['xy', 71.11999999999999, 43.942]
         ]
-      ]);
-    });
+      ]
+    ]);
+  });
+});
+
+describe('convertLib()', () => {
+  it('should include the footprint name in the exported module', () => {
+    expect(
+      convertLib(
+        [
+          '4228',
+          '3187.5',
+          'package`1206`',
+          '270',
+          '',
+          'gge12',
+          '2',
+          'a8f323e85d754372811837f27f204a01',
+          '1564555550',
+          '0'
+        ],
+        []
+      )
+    ).toEqual([
+      'module',
+      'easyeda:1206',
+      ['layer', 'F.Cu'],
+      ['at', 57.912, 47.625, -90],
+      [
+        'fp_text',
+        'user',
+        'gge12',
+        ['at', 0, 0],
+        ['layer', 'Cmts.User'],
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+      ]
+    ]);
+  });
+
+  it('should correctly orient footprint elements', () => {
+    const pad =
+      '#@$PAD~ELLIPSE~4010~3029~4~4~11~SEG1C~4~1.5~~270~gge181~0~~Y~0~0~0.4~4010.05,3029.95';
+    expect(
+      convertLib(
+        [
+          '4228',
+          '3187.5',
+          'package`1206`',
+          '270',
+          '',
+          'gge12',
+          '2',
+          'a8f323e85d754372811837f27f204a01',
+          '1564555550',
+          '0',
+          ...pad.split('~')
+        ],
+        []
+      )
+    ).toEqual([
+      'module',
+      'easyeda:1206',
+      ['layer', 'F.Cu'],
+      ['at', 57.912, 47.625, -90],
+      [
+        'pad',
+        4,
+        'thru_hole',
+        'circle',
+        ['at', 40.259, 55.372, -90],
+        ['size', 1.016, 1.016],
+        ['layers', '*.Cu', '*.Paste', '*.Mask'],
+        ['drill', 0.762],
+        null
+      ],
+      [
+        'fp_text',
+        'user',
+        'gge12',
+        ['at', 0, 0],
+        ['layer', 'Cmts.User'],
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+      ]
+    ]);
   });
 });
