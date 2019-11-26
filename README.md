@@ -2,7 +2,7 @@
 
 Convert EasyEDA PCBs to KiCad format
 
-[![Build Status](https://travis-ci.org/urish/easyeda2kicad.png?branch=master)](https://travis-ci.org/urish/easyeda2kicad)
+[![Build Status](https://travis-ci.org/wokwi/easyeda2kicad.png?branch=master)](https://travis-ci.org/wokwi/easyeda2kicad)
 
 ## Installation
 
