@@ -5,10 +5,29 @@ import {
   convertSolidRegion,
   convertTrack
 } from './board';
-import { encodeObject } from './spectra';
+import { encodeObject, ISpectraList } from './spectra';
 
-function removeNulls(a: string[]) {
-  return a.filter((e) => e != null);
+function removeNulls(a: ISpectraList): ISpectraList {
+  return a
+    .map((item) => (item instanceof Array ? removeNulls(item) : item))
+    .filter((e) => e != null);
+}
+
+function round(obj: ISpectraList | string | number, precision = 3): ISpectraList | string | number {
+  if (obj instanceof Array) {
+    return obj.map((item) => round(item, precision));
+  }
+  if (typeof obj === 'number') {
+    if (obj > -Number.EPSILON && obj < Number.EPSILON) {
+      return 0;
+    }
+    return parseFloat(obj.toFixed(precision));
+  }
+  return obj;
+}
+
+function normalize(obj: ISpectraList) {
+  return round(removeNulls(obj));
 }
 
 describe('convertTrack', () => {
@@ -241,7 +260,7 @@ describe('convertLib()', () => {
         4,
         'thru_hole',
         'circle',
-        ['at', 40.259, 55.372, -90],
+        ['at', -40.259, 55.372, -90],
         ['size', 1.016, 1.016],
         ['layers', '*.Cu', '*.Paste', '*.Mask'],
         ['drill', 0.762],
@@ -262,21 +281,23 @@ describe('convertLib()', () => {
     const text =
       '#@$TEXT~N~4363~3153~0.6~90~~3~~4.5~0.5pF~M 4359.51 3158.63 L 4359.71 3159.25~none~gge188~~0~';
     expect(
-      convertLib(
-        [
-          '4228',
-          '3187.5',
-          'package`1206`',
-          '270',
-          '',
-          'gge12',
-          '2',
-          'a8f323e85d754372811837f27f204a01',
-          '1564555550',
-          '0',
-          ...text.split('~')
-        ],
-        []
+      round(
+        convertLib(
+          [
+            '4228',
+            '3187.5',
+            'package`1206`',
+            '270',
+            '',
+            'gge12',
+            '2',
+            'a8f323e85d754372811837f27f204a01',
+            '1564555550',
+            '0',
+            ...text.split('~')
+          ],
+          []
+        )
       )
     ).toEqual([
       'module',
@@ -287,12 +308,12 @@ describe('convertLib()', () => {
         'fp_text',
         'value',
         '0.5pF',
-        ['at', 8.763, -34.29, 90],
+        ['at', -8.763, -34.29, 90],
         ['layer', 'F.Fab'],
         'hide',
         [
           'effects',
-          ['font', ['size', 1.143, 1.143], ['thickness', 0.15239999999999998]],
+          ['font', ['size', 1.143, 1.143], ['thickness', 0.152]],
           ['justify', 'left', null]
         ]
       ],
@@ -300,6 +321,54 @@ describe('convertLib()', () => {
         'fp_text',
         'user',
         'gge12',
+        ['at', 0, 0],
+        ['layer', 'Cmts.User'],
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+      ]
+    ]);
+  });
+
+  it('should correctly convert pad offsets (issue #11)', () => {
+    const input =
+      'LaIB~4177~3107~package`0402`3DModel`R_0603_1608Metric`~90~~gge464~1~405bb71866794ab59459d3b2854a4d33~1541687137~0~#@$TEXT~P~4173.31~3108.77~0.5~90~0~3~~2.4~R2~M 4172.0001 3108.77 L 4174.2901 3108.77 M 4172.0001 3108.77 L 4172.0001 3107.79 L 4172.1101 3107.46 L 4172.2201 3107.35 L 4172.4401 3107.24 L 4172.6601 3107.24 L 4172.8701 3107.35 L 4172.9801 3107.46 L 4173.0901 3107.79 L 4173.0901 3108.77 M 4173.0901 3108.01 L 4174.2901 3107.24 M 4172.5501 3106.41 L 4172.4401 3106.41 L 4172.2201 3106.3 L 4172.1101 3106.2 L 4172.0001 3105.98 L 4172.0001 3105.54 L 4172.1101 3105.32 L 4172.2201 3105.21 L 4172.4401 3105.1 L 4172.6601 3105.1 L 4172.8701 3105.21 L 4173.2001 3105.43 L 4174.2901 3106.52 L 4174.2901 3105~~gge467~~0~#@$TEXT~N~4160~3102.72~0.5~90~0~3~~4.5~2K2~M 4158.57 3102.52 L 4158.36 3102.52 L 4157.95 3102.31 L 4157.75 3102.11 L 4157.55 3101.7 L 4157.55 3100.88 L 4157.75 3100.47 L 4157.95 3100.27 L 4158.36 3100.06 L 4158.77 3100.06 L 4159.18 3100.27 L 4159.8 3100.67 L 4161.84 3102.72 L 4161.84 3099.86 M 4157.55 3098.51 L 4161.84 3098.51 M 4157.55 3095.64 L 4160.41 3098.51 M 4159.39 3097.48 L 4161.84 3095.64 M 4158.57 3094.09 L 4158.36 3094.09 L 4157.95 3093.88 L 4157.75 3093.68 L 4157.55 3093.27 L 4157.55 3092.45 L 4157.75 3092.04 L 4157.95 3091.84 L 4158.36 3091.63 L 4158.77 3091.63 L 4159.18 3091.84 L 4159.8 3092.25 L 4161.84 3094.29 L 4161.84 3091.43~none~gge468~~0~#@$PAD~RECT~4177~3108.67~2.362~2.559~1~SWCLK~1~0~4175.72 3109.85 4175.72 3107.49 4178.28 3107.49 4178.28 3109.85~90~gge466~0~~Y~0~0~0.4~4177,3108.67#@$SVGNODE~{"gId":"gge464_outline","nodeName":"g","nodeType":1,"layerid":"19","attrs":{"c_width":"6.4","c_height":"3.1898","c_rotation":"0,0,90","z":"0","c_origin":"4177,3107.03","uuid":"14d29194d76d4abda3f419dd15e5ae1e","c_etype":"outline3D","id":"gge464_outline","title":"R_0603_1608Metric","layerid":"19","transform":"scale(10.1587) translate(-3765.8265, -2801.1817)","style":""},"childNodes":[{"gId":"gge464_outline_line0","nodeName":"polyline","nodeType":1,"attrs":{"fill":"none","id":"gge464_outline_line0","c_shapetype":"line","points":"4176.843 3107.345 4177.157 3107.345 4177.157 3107.343 4177.157 3107.341 4177.157 3107.338 4177.157 3107.335 4177.157 3107.331 4177.157 3107.327 4177.157 3107.245 4177.157 3107.241 4177.157 3107.237 4177.157 3107.234 4177.157 3107.231 4177.157 3107.229 4177.157 3107.227 4177.157 3106.833 4177.157 3106.831 4177.157 3106.829 4177.157 3106.826 4177.157 3106.823 4177.157 3106.819 4177.157 3106.815 4177.157 3106.733 4177.157 3106.729 4177.157 3106.725 4177.157 3106.722 4177.157 3106.719 4177.157 3106.717 4177.157 3106.715 4176.843 3106.715 4176.843 3106.717 4176.843 3106.719 4176.843 3106.722 4176.843 3106.725 4176.843 3106.729 4176.843 3106.733 4176.843 3106.815 4176.843 3106.819 4176.843 3106.823 4176.843 3106.826 4176.843 3106.829 4176.843 3106.831 4176.843 3106.833 4176.843 3107.227 4176.843 3107.229 4176.843 3107.231 4176.843 3107.234 4176.843 3107.237 4176.843 3107.241 4176.843 3107.245 4176.843 3107.327 4176.843 3107.331 4176.843 3107.335 4176.843 3107.338 4176.843 3107.341 4176.843 3107.343 4176.843 3107.345 4176.843 3107.345';
+
+    expect(normalize(convertLib(input.split(/~/g).slice(1), ['', '+3V3', 'SWCLK']))).toEqual([
+      'module',
+      'easyeda:0402',
+      ['layer', 'F.Cu'],
+      ['at', 44.958, 27.178, 90],
+      ['attr', 'smd'],
+      [
+        'fp_text',
+        'reference',
+        'R2',
+        ['at', -0.45, -0.937, 90],
+        ['layer', 'F.SilkS'],
+        ['effects', ['font', ['size', 0.61, 0.61], ['thickness', 0.127]], ['justify', 'left']]
+      ],
+      [
+        'fp_text',
+        'value',
+        '2K2',
+        ['at', 1.087, -4.318, 90],
+        ['layer', 'F.Fab'],
+        'hide',
+        ['effects', ['font', ['size', 1.143, 1.143], ['thickness', 0.127]], ['justify', 'left']]
+      ],
+      [
+        'pad',
+        1,
+        'smd',
+        'rect',
+        ['at', -0.424, 0, 90],
+        ['size', 0.6, 0.65],
+        ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
+        ['net', 2, 'SWCLK']
+      ],
+      [
+        'fp_text',
+        'user',
+        'gge464',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
         ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]

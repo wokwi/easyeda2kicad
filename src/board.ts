@@ -53,7 +53,7 @@ function kiAngle(value: string, parentAngle?: number) {
 function rotate({ x, y }: ICoordinates, degrees: number) {
   const radians = (degrees / 180) * Math.PI;
   return {
-    x: x * Math.cos(radians) + y * Math.sin(radians),
+    x: x * Math.cos(radians) - y * Math.sin(radians),
     y: x * Math.sin(radians) + y * Math.cos(radians)
   };
 }
