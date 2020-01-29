@@ -293,13 +293,13 @@ function convertHole(args: string[], transform: IParentTransform) {
   ];
 }
 
-function convertCircle(args: string[], type = 'gr_circle', parentCoords?: IParentTransform) {
+export function convertCircle(args: string[], type = 'gr_circle', parentCoords?: IParentTransform) {
   const [x, y, radius, strokeWidth, layer, id, locked] = args;
   const center = kiCoords(x, y, parentCoords);
   return [
     type,
     ['center', center.x, center.y],
-    ['end', center.x + kiUnits(radius), center.y + kiUnits(radius)],
+    ['end', center.x + kiUnits(radius), center.y],
     ['layer', getLayerName(layer)],
     ['width', kiUnits(strokeWidth)]
   ];
