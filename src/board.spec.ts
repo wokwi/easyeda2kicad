@@ -194,6 +194,25 @@ describe('convertSolidRegion', () => {
       ]
     ]);
   });
+
+  it('should ignore solid regions with circles (issue #12)', () => {
+    expect(
+      convertSolidRegion(
+        [
+          '1',
+          '',
+          'M 4367 3248 A 33.8 33.8 0 1 0 4366.99 3248 Z ',
+          'cutout',
+          'gge1953',
+          '',
+          '',
+          '',
+          '0'
+        ],
+        []
+      )
+    ).toEqual(null);
+  });
 });
 
 describe('convertLib()', () => {

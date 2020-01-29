@@ -398,6 +398,10 @@ export function convertSolidRegion(args: string[], nets: string[]) {
     console.warn(`Warning: unsupported SOLIDREGION type ${type}`);
     return null;
   }
+  if (path.indexOf('A') >= 0) {
+    console.warn('Warning: SOLIDREGION with arcs/circles are not supported yet!');
+    return null;
+  }
   const pointList = path.split(/[ ,LM]/).filter((p) => !isNaN(parseFloat(p)));
   const polygonPoints = [];
   for (let i = 0; i < pointList.length; i += 2) {
