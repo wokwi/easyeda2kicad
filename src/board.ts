@@ -213,10 +213,11 @@ export function convertArc(args: string[], objName = 'gr_arc', transform?: IPare
     end.x,
     end.y
   );
+  const endPoint = sweep === '1' ? start : end;
   return [
     objName,
     ['start', cx, cy], // actually center
-    ['end', start.x, start.y],
+    ['end', endPoint.x, endPoint.y],
     ['angle', Math.abs(extent)],
     ['width', kiUnits(width)],
     ['layer', getLayerName(layer)]

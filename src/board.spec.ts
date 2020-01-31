@@ -104,6 +104,15 @@ describe('convertArc', () => {
       '(gr_arc (start 0.465 2.978) (end -5.746 6.659) (angle 358.992) (width 0.152) (layer "B.SilkS"))'
     );
   });
+
+  it('should correctly determine the arc start and end point (issue #16)', () => {
+    const arc = 'ARC~1~1~S$9~M4262.5,3279.5 A33.5596,33.5596 0 0 0 4245.5921,3315.5816~~gge8~0'
+      .split('~')
+      .slice(1);
+    expect(encodeObject(convertArc(arc))).toEqual(
+      '(gr_arc (start 70.739 78.486) (end 62.38 80.158) (angle 72.836) (width 0.254) (layer "F.Cu"))'
+    );
+  });
 });
 
 describe('convertCopperArea', () => {
