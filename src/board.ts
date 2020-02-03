@@ -306,6 +306,33 @@ export function convertCircle(args: string[], type = 'gr_circle', parentCoords?:
   ];
 }
 
+function pathToPolygon(path: string, parentCoords?: IParentTransform) {
+  if (path.indexOf('A') >= 0) {
+    console.warn('Warning: SOLIDREGION with arcs/circles are not supported yet!');
+    return null;
+  }
+  const pointList = path.split(/[ ,LM]/).filter((p) => !isNaN(parseFloat(p)));
+  const polygonPoints = [];
+  for (let i = 0; i < pointList.length; i += 2) {
+    const coords = kiCoords(pointList[i], pointList[i + 1], parentCoords);
+    polygonPoints.push(['xy', coords.x, coords.y]);
+  }
+  return polygonPoints;
+}
+
+export function convertPolygon(args: string[], parentCoords?: IParentTransform) {
+  const [layerId, net, path, type, id, , , locked] = args;
+  if (type !== 'solid') {
+    console.log(`Warning: unsupported SOLIDREGION type in footprint: ${type}`);
+    return null;
+  }
+  const polygonPoints = pathToPolygon(path, parentCoords);
+  if (!polygonPoints) {
+    return null;
+  }
+  return ['fp_poly', ['pts', ...polygonPoints], ['layer', getLayerName(layerId)], ['width', 0]];
+}
+
 export function convertLib(args: string[], nets: string[]) {
   const [x, y, attributes, rotation, importFlag, id, locked] = args;
   const shapeList = args
@@ -333,6 +360,8 @@ export function convertLib(args: string[], nets: string[]) {
       shapes.push(convertPad(shapeArgs, nets, transform));
     } else if (type === 'CIRCLE') {
       shapes.push(convertCircle(shapeArgs, 'fp_circle', transform));
+    } else if (type === 'SOLIDREGION') {
+      shapes.push(convertPolygon(shapeArgs, transform));
     } else {
       console.warn(`Warning: unsupported shape ${type} in footprint ${id}`);
     }
@@ -399,15 +428,9 @@ export function convertSolidRegion(args: string[], nets: string[]) {
     console.warn(`Warning: unsupported SOLIDREGION type ${type}`);
     return null;
   }
-  if (path.indexOf('A') >= 0) {
-    console.warn('Warning: SOLIDREGION with arcs/circles are not supported yet!');
+  const polygonPoints = pathToPolygon(path);
+  if (!polygonPoints) {
     return null;
-  }
-  const pointList = path.split(/[ ,LM]/).filter((p) => !isNaN(parseFloat(p)));
-  const polygonPoints = [];
-  for (let i = 0; i < pointList.length; i += 2) {
-    const coords = kiCoords(pointList[i], pointList[i + 1]);
-    polygonPoints.push(['xy', coords.x, coords.y]);
   }
   return [
     'zone',

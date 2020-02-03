@@ -418,4 +418,43 @@ describe('convertLib()', () => {
       ]
     ]);
   });
+
+  it('should convert polygons inside footprints (issue #15)', () => {
+    const input =
+      'LIB~4401~3164~package`IEC_HIGHVOLTAGE_SMALL`~~~gge846~1~~~0~#@$SOLIDREGION~3~~M 4400.3 3160.5 L 4401.8 3160.5 L 4399.1 3165.8 L 4402.9 3164.7 L 4400.9 3169.3 L 4401.7 3169.1 L 4400.1 3170.9 L 4399.8 3168.8 L 4400.3 3169.2 L 4401.3 3165.9 L 4397.6 3167.1 Z ~solid~gge849~~~~0';
+
+    expect(normalize(convertLib(input.split(/~/g).slice(1), ['']))).toEqual([
+      'module',
+      'easyeda:IEC_HIGHVOLTAGE_SMALL',
+      ['layer', 'F.Cu'],
+      ['at', 101.854, 41.656],
+      [
+        'fp_poly',
+        [
+          'pts',
+          ['xy', -0.178, -0.889],
+          ['xy', 0.203, -0.889],
+          ['xy', -0.483, 0.457],
+          ['xy', 0.483, 0.178],
+          ['xy', -0.025, 1.346],
+          ['xy', 0.178, 1.295],
+          ['xy', -0.229, 1.753],
+          ['xy', -0.305, 1.219],
+          ['xy', -0.178, 1.321],
+          ['xy', 0.076, 0.483],
+          ['xy', -0.864, 0.787]
+        ],
+        ['layer', 'F.SilkS'],
+        ['width', 0]
+      ],
+      [
+        'fp_text',
+        'user',
+        'gge846',
+        ['at', 0, 0],
+        ['layer', 'Cmts.User'],
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+      ]
+    ]);
+  });
 });
