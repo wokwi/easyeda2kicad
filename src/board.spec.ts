@@ -457,4 +457,24 @@ describe('convertLib()', () => {
       ]
     ]);
   });
+
+  it('should not crash if SOLIDREGION contains an arc (issue #20)', () => {
+    const input =
+      'LIB~4401~3164~package`IEC_HIGHVOLTAGE_SMALL`~~~gge846~1~~~0~#@$#@$SOLIDREGION~3~~M 4513.5 3294 A 12.125 12.125 0 0 1 4495.5 3294 Z ~solid~gge636~~~~0';
+
+    expect(normalize(convertLib(input.split(/~/g).slice(1), ['']))).toEqual([
+      'module',
+      'easyeda:IEC_HIGHVOLTAGE_SMALL',
+      ['layer', 'F.Cu'],
+      ['at', 101.854, 41.656],
+      [
+        'fp_text',
+        'user',
+        'gge846',
+        ['at', 0, 0],
+        ['layer', 'Cmts.User'],
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+      ]
+    ]);
+  });
 });

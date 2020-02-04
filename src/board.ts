@@ -376,7 +376,7 @@ export function convertLib(args: string[], nets: string[]) {
   ]);
 
   const modAttrs = [];
-  const isSmd = shapes.some((shape) => shape[0] === 'pad' && shape[2] === 'smd');
+  const isSmd = shapes.some((shape) => shape && shape[0] === 'pad' && shape[2] === 'smd');
   if (isSmd) {
     modAttrs.push(['attr', 'smd']);
   }
