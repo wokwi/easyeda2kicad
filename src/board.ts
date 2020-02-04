@@ -424,23 +424,42 @@ export function convertCopperArea(args: string[], nets: string[]) {
 
 export function convertSolidRegion(args: string[], nets: string[]) {
   const [layerId, net, path, type, id, locked] = args;
-  if (type !== 'cutout') {
-    console.warn(`Warning: unsupported SOLIDREGION type ${type}`);
-    return null;
-  }
   const polygonPoints = pathToPolygon(path);
+  const netId = nets.indexOf(net);
   if (!polygonPoints) {
     return null;
   }
-  return [
-    'zone',
-    ['net', 0],
-    ['net_name', ''],
-    ['hatch', 'edge', 0.508],
-    ['layer', getLayerName(layerId)],
-    ['keepout', ['tracks', 'not_allowed'], ['vias', 'not_allowed'], ['copperpour', 'not_allowed']],
-    ['polygon', ['pts', ...polygonPoints]]
-  ];
+  switch (type) {
+    case 'cutout':
+      return [
+        'zone',
+        ['net', netId],
+        ['net_name', ''],
+        ['hatch', 'edge', 0.508],
+        ['layer', getLayerName(layerId)],
+        [
+          'keepout',
+          ['tracks', 'not_allowed'],
+          ['vias', 'not_allowed'],
+          ['copperpour', 'not_allowed']
+        ],
+        ['polygon', ['pts', ...polygonPoints]]
+      ];
+
+    case 'solid':
+      return [
+        'gr_poly',
+        // Unfortunately, KiCad does not support net for gr_poly
+        // ['net', netId],
+        ['pts', ...polygonPoints],
+        ['layer', getLayerName(layerId)],
+        ['width', 0]
+      ];
+
+    default:
+      console.warn(`Warning: unsupported SOLIDREGION type ${type}`);
+      return null;
+  }
 }
 
 function convertShape(shape: string, nets: string[]) {

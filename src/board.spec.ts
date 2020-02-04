@@ -167,7 +167,7 @@ describe('convertSolidRegion', () => {
           'gge40',
           '0'
         ],
-        []
+        ['L3_2']
       )
     ).toEqual([
       'zone',
@@ -458,7 +458,7 @@ describe('convertLib()', () => {
     ]);
   });
 
-  it('should not crash if SOLIDREGION contains an arc (issue #20)', () => {
+  it('should not crash if SOLIDREGION contains an arc (issue #15)', () => {
     const input =
       'LIB~4401~3164~package`IEC_HIGHVOLTAGE_SMALL`~~~gge846~1~~~0~#@$#@$SOLIDREGION~3~~M 4513.5 3294 A 12.125 12.125 0 0 1 4495.5 3294 Z ~solid~gge636~~~~0';
 
