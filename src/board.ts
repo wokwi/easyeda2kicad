@@ -437,12 +437,7 @@ export function convertSolidRegion(args: string[], nets: string[]) {
         ['net_name', ''],
         ['hatch', 'edge', 0.508],
         ['layer', getLayerName(layerId)],
-        [
-          'keepout',
-          ['tracks', 'not_allowed'],
-          ['vias', 'not_allowed'],
-          ['copperpour', 'not_allowed']
-        ],
+        ['keepout', ['tracks', 'allowed'], ['vias', 'allowed'], ['copperpour', 'not_allowed']],
         ['polygon', ['pts', ...polygonPoints]]
       ];
 

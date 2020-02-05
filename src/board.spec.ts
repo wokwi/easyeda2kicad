@@ -175,12 +175,7 @@ describe('convertSolidRegion', () => {
       ['net_name', ''],
       ['hatch', 'edge', 0.508],
       ['layer', 'B.Cu'],
-      [
-        'keepout',
-        ['tracks', 'not_allowed'],
-        ['vias', 'not_allowed'],
-        ['copperpour', 'not_allowed']
-      ],
+      ['keepout', ['tracks', 'allowed'], ['vias', 'allowed'], ['copperpour', 'not_allowed']],
       [
         'polygon',
         [
