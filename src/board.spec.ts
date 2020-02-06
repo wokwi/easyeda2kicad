@@ -249,20 +249,22 @@ describe('convertHole()', () => {
 describe('convertLib()', () => {
   it('should include the footprint name in the exported module', () => {
     expect(
-      convertLib(
-        [
-          '4228',
-          '3187.5',
-          'package`1206`',
-          '270',
-          '',
-          'gge12',
-          '2',
-          'a8f323e85d754372811837f27f204a01',
-          '1564555550',
-          '0'
-        ],
-        []
+      normalize(
+        convertLib(
+          [
+            '4228',
+            '3187.5',
+            'package`1206`',
+            '270',
+            '',
+            'gge12',
+            '2',
+            'a8f323e85d754372811837f27f204a01',
+            '1564555550',
+            '0'
+          ],
+          []
+        )
       )
     ).toEqual([
       'module',
@@ -298,21 +300,23 @@ describe('convertLib()', () => {
     const pad =
       '#@$PAD~ELLIPSE~4010~3029~4~4~11~SEG1C~4~1.5~~270~gge181~0~~Y~0~0~0.4~4010.05,3029.95';
     expect(
-      convertLib(
-        [
-          '4228',
-          '3187.5',
-          'package`1206`',
-          '270',
-          '',
-          'gge12',
-          '2',
-          'a8f323e85d754372811837f27f204a01',
-          '1564555550',
-          '0',
-          ...pad.split('~')
-        ],
-        []
+      normalize(
+        convertLib(
+          [
+            '4228',
+            '3187.5',
+            'package`1206`',
+            '270',
+            '',
+            'gge12',
+            '2',
+            'a8f323e85d754372811837f27f204a01',
+            '1564555550',
+            '0',
+            ...pad.split('~')
+          ],
+          []
+        )
       )
     ).toEqual([
       'module',
@@ -327,8 +331,7 @@ describe('convertLib()', () => {
         ['at', -40.259, 55.372, -90],
         ['size', 1.016, 1.016],
         ['layers', '*.Cu', '*.Paste', '*.Mask'],
-        ['drill', 0.762],
-        null
+        ['drill', 0.762]
       ],
       [
         'fp_text',
@@ -345,7 +348,7 @@ describe('convertLib()', () => {
     const text =
       '#@$TEXT~N~4363~3153~0.6~90~~3~~4.5~0.5pF~M 4359.51 3158.63 L 4359.71 3159.25~none~gge188~~0~';
     expect(
-      round(
+      normalize(
         convertLib(
           [
             '4228',
@@ -375,11 +378,7 @@ describe('convertLib()', () => {
         ['at', -8.763, -34.29, 90],
         ['layer', 'F.Fab'],
         'hide',
-        [
-          'effects',
-          ['font', ['size', 1.143, 1.143], ['thickness', 0.152]],
-          ['justify', 'left', null]
-        ]
+        ['effects', ['font', ['size', 1.143, 1.143], ['thickness', 0.152]], ['justify', 'left']]
       ],
       [
         'fp_text',
@@ -492,6 +491,26 @@ describe('convertLib()', () => {
         'fp_text',
         'user',
         'gge846',
+        ['at', 0, 0],
+        ['layer', 'Cmts.User'],
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+      ]
+    ]);
+  });
+
+  it('should not respected the locked attribute (issue #23)', () => {
+    const input = 'LIB~4050~3050~package`Test`~~~gge123~1~~~1~';
+
+    expect(normalize(convertLib(input.split(/~/g).slice(1), ['']))).toEqual([
+      'module',
+      'easyeda:Test',
+      'locked',
+      ['layer', 'F.Cu'],
+      ['at', 12.7, 12.7],
+      [
+        'fp_text',
+        'user',
+        'gge123',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
         ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]

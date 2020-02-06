@@ -334,7 +334,7 @@ export function convertPolygon(args: string[], parentCoords?: IParentTransform) 
 }
 
 export function convertLib(args: string[], nets: string[]) {
-  const [x, y, attributes, rotation, importFlag, id, locked] = args;
+  const [x, y, attributes, rotation, importFlag, id, , , , locked] = args;
   const shapeList = args
     .join('~')
     .split('#@$')
@@ -382,7 +382,15 @@ export function convertLib(args: string[], nets: string[]) {
   }
 
   const footprintName = `easyeda:${attrs.package || id}`;
-  return ['module', footprintName, ['layer', 'F.Cu'], kiAt(x, y, rotation), ...modAttrs, ...shapes];
+  return [
+    'module',
+    footprintName,
+    locked === '1' ? 'locked' : null,
+    ['layer', 'F.Cu'],
+    kiAt(x, y, rotation),
+    ...modAttrs,
+    ...shapes
+  ];
 }
 
 export function convertCopperArea(args: string[], nets: string[]) {
