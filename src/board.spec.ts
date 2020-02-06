@@ -246,6 +246,20 @@ describe('convertHole()', () => {
   });
 });
 
+describe('convert circle', () => {
+  it('should correctly determine the end point according to radius', () => {
+    expect(
+      round(convertCircle(['4000', '3000', '12.4', '1', '3', 'gge635', '0', '', '']))
+    ).toEqual([
+      'gr_circle',
+      ['center', 0, 0],
+      ['end', 3.15, 0],
+      ['layer', 'F.SilkS'],
+      ['width', 0.254]
+    ]);
+  });
+});
+
 describe('convertLib()', () => {
   it('should include the footprint name in the exported module', () => {
     expect(
@@ -280,20 +294,6 @@ describe('convertLib()', () => {
         ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
       ]
     ]);
-  });
-
-  describe('convert circle', () => {
-    it('should correctly determine the end point according to radius', () => {
-      expect(
-        round(convertCircle(['4000', '3000', '12.4', '1', '3', 'gge635', '0', '', '']))
-      ).toEqual([
-        'gr_circle',
-        ['center', 0, 0],
-        ['end', 3.15, 0],
-        ['layer', 'F.SilkS'],
-        ['width', 0.254]
-      ]);
-    });
   });
 
   it('should correctly orient footprint elements', () => {
