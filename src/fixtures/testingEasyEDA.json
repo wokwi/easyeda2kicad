@@ -1,0 +1,15 @@
+{
+  "editorVersion": "6.2.46",
+  "docType": "5",
+  "title": "testingEasyEDA",
+  "description": "",
+  "colors": {},
+  "schematics": [
+    {
+      "docType": "1",
+      "title": "Sheet_1",
+      "description": "",
+      "dataStr": "{\"head\":{\"docType\":\"1\",\"editorVersion\":\"6.2.46\",\"c_para\":{\"Prefix Start\":\"1\"},\"c_spiceCmd\":null},\"canvas\":\"CA~1000~1000~#FFFFFF~yes~#CCCCCC~5~1000~1000~line~5~pixel~5~0~0\",\"shape\":[\"W~505 255 490 255 490 285 505 285~#008800~1~0~none~gge80~0\",\"W~500 270 490 270~#008800~1~0~none~gge82~0\",\"W~525 285 520 285 510 285 510 270 525 270 525 255 510 255~#008800~1~0~none~gge89~0\",\"W~530 255 530 270 535 270 545 255~#008800~1~0~none~gge92~0\",\"W~530 285 530 270~#008800~1~0~none~gge100~0\",\"W~545 285 540 270 530 270~#008800~1~0~none~gge105~0\",\"J~530~270~2.5~#CC0000~gge101~0\",\"J~490~270~2.5~#CC0000~gge107~0\"],\"BBox\":{\"x\":487.5,\"y\":255,\"width\":57.5,\"height\":30},\"colors\":{}}"
+    }
+  ]
+}

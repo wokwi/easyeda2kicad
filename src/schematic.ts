@@ -49,7 +49,7 @@ function convertWire(args: string[]) {
   return result;
 }
 
-function convertShape(shape: string) {
+export function convertShape(shape: string) {
   const [type, ...args] = shape.split('~');
   switch (type) {
     case 'W':
