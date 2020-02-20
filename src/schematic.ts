@@ -12,6 +12,26 @@ function flatten<T>(arr: T[]) {
   return [].concat(...arr);
 }
 
+function convertNoConnect(args: string[]) {
+  const [pinDotX, pinDotY, id, pathStr, color, locked] = args;
+  const kiUnitX = kiUnits(pinDotX);
+  const kiUnitY = kiUnits(pinDotY);
+  const result = [];
+  result.push(`NoConn ~ ${kiUnitX} ${kiUnitY}`);
+
+  return result;
+}
+
+function convertJunction(args: string[]) {
+  const [pinDotX, pinDotY, junctionCircleRadius, fillColor, id, locked] = args;
+  const kiUnitX = kiUnits(pinDotX);
+  const kiUnitY = kiUnits(pinDotY);
+  const result = [];
+  result.push(`Connection ~ ${kiUnitX} ${kiUnitY}`);
+
+  return result;
+}
+
 function convertWire(args: string[]) {
   const [points, strokeColor, strokeWidth, strokeStyle, fillColor, id, locked] = args;
   const coordList = points.split(' ');
@@ -29,11 +49,15 @@ function convertWire(args: string[]) {
   return result;
 }
 
-function convertShape(shape: string) {
+export function convertShape(shape: string) {
   const [type, ...args] = shape.split('~');
   switch (type) {
     case 'W':
       return convertWire(args);
+    case 'J':
+      return convertJunction(args);
+    case 'O':
+      return convertNoConnect(args);
     default:
       console.warn(`Warning: unsupported shape ${type}`);
       return [];

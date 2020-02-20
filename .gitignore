@@ -5,3 +5,4 @@ dist
 *.kicad_pcb-bak
 *.pro
 fp-info-cache
+*.sch

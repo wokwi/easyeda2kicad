@@ -1,0 +1,42 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`convertSchematic should convert an EasyEDA schematic file 1`] = `
+"EESchema Schematic File Version 4
+EELAYER 30 0
+EELAYER END
+Wire Wire Line
+    5555 2805 5390 2805
+Wire Wire Line
+    5390 2805 5390 3135
+Wire Wire Line
+    5390 3135 5555 3135
+Wire Wire Line
+    5500 2970 5390 2970
+Wire Wire Line
+    5775 3135 5720 3135
+Wire Wire Line
+    5720 3135 5610 3135
+Wire Wire Line
+    5610 3135 5610 2970
+Wire Wire Line
+    5610 2970 5775 2970
+Wire Wire Line
+    5775 2970 5775 2805
+Wire Wire Line
+    5775 2805 5610 2805
+Wire Wire Line
+    5830 2805 5830 2970
+Wire Wire Line
+    5830 2970 5885 2970
+Wire Wire Line
+    5885 2970 5995 2805
+Wire Wire Line
+    5830 3135 5830 2970
+Wire Wire Line
+    5995 3135 5940 2970
+Wire Wire Line
+    5940 2970 5830 2970
+Connection ~ 5830 2970
+Connection ~ 5390 2970
+$EndSCHEMATC"
+`;
