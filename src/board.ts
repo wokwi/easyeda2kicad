@@ -107,6 +107,39 @@ function convertVia(args: string[], nets: string[], parentCoords?: IParentTransf
     ['net', nets.indexOf(net)]
   ];
 }
+function convertPadToVia(args: string[], nets: string[], parentCoords?: IParentTransform) {
+  const [
+    shape,
+    x,
+    y,
+    holeRadius,
+    height,
+    layerId,
+    net,
+    num,
+    drill,
+    points,
+    rotation,
+    id,
+    holeLength,
+    holePoints,
+    plated,
+    locked
+  ] = args;
+
+  if (shape === 'RECT') {
+    convertPad(args, nets, parentCoords);
+    return;
+  }
+  return [
+    'via',
+    kiAt(x, y, null, parentCoords),
+    ['size', kiUnits(holeRadius)],
+    ['drill', kiUnits(drill) * 2],
+    ['layers', 'F.Cu', 'B.Cu'],
+    ['net', nets.indexOf(net)]
+  ];
+}
 
 export function convertTrack(
   args: string[],
@@ -511,6 +544,8 @@ function convertShape(shape: string, nets: string[]) {
       return [convertHole(args)];
     case 'LIB':
       return [convertLib(args, nets)];
+    case 'PAD':
+      return [convertPadToVia(args, nets)];
     default:
       console.warn(`Warning: unsupported shape ${type}`);
       return null;
