@@ -4,6 +4,12 @@ Convert EasyEDA PCBs to KiCad format
 
 [![Build Status](https://travis-ci.org/wokwi/easyeda2kicad.png?branch=master)](https://travis-ci.org/wokwi/easyeda2kicad)
 
+## Online Converter
+
+The easiest way to convert EasyEDA boards to KiCad format is to use the online convertor:
+
+https://wokwi.com/easyeda2kicad
+
 ## Installation
 
 ```
