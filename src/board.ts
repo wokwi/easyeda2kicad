@@ -362,7 +362,7 @@ function pathToPolygon(path: string, parentCoords?: IParentTransform) {
 function convertPolygon(args: string[], parentCoords?: IParentTransform) {
   const [layerId, net, path, type, id, , , locked] = args;
   if (type !== 'solid') {
-    console.log(`Warning: unsupported SOLIDREGION type in footprint: ${type}`);
+    console.warn(`Warning: unsupported SOLIDREGION type in footprint: ${type}`);
     return null;
   }
   const polygonPoints = pathToPolygon(path, parentCoords);
