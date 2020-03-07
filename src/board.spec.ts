@@ -517,4 +517,70 @@ describe('convertLib()', () => {
       ]
     ]);
   });
+
+  it('should correctly convert polygon-shaped pads (issue #28)', () => {
+    const input =
+      'LIB~612.25~388.7~package`0603`value`1.00k~~~rep30~1~c25f29e5d54148509f1fe8ecc29bd248~1549637911~0~#@$PAD~POLYGON~613.999~396.939~3.9399~3.14~1~GND~1~0~612.03 398.51 612.03 395.37 615.97 395.37 615.97 398.51~90~rep28~0~~Y~0~0~0.4~613.999,396.939#@$PAD~POLYGON~613.999~389.459~3.94~3.15~1~B-IN~2~0~612.03 391.03 612.03 387.88 615.97 387.88 615.97 391.03~90~rep29~0~~Y~0~0~0.4~613.999,389.459';
+    expect(normalize(convertLib(input.split('~').slice(1), []))).toEqual([
+      'module',
+      'easyeda:0603',
+      ['layer', 'F.Cu'],
+      ['at', -860.488, -663.27],
+      ['attr', 'smd'],
+      [
+        'pad',
+        1,
+        'smd',
+        'custom',
+        ['at', 0.444, 2.093, 90],
+        ['size', 1.001, 0.798],
+        ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
+        [
+          'primitives',
+          [
+            'gr_poly',
+            [
+              'pts',
+              ['xy', -0.5, 0.399],
+              ['xy', -0.5, -0.399],
+              ['xy', 0.501, -0.399],
+              ['xy', 0.501, 0.399]
+            ],
+            ['width', 0.1]
+          ]
+        ]
+      ],
+      [
+        'pad',
+        2,
+        'smd',
+        'custom',
+        ['at', 0.444, 0.193, 90],
+        ['size', 1.001, 0.8],
+        ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
+        [
+          'primitives',
+          [
+            'gr_poly',
+            [
+              'pts',
+              ['xy', -0.5, 0.399],
+              ['xy', -0.5, -0.401],
+              ['xy', 0.501, -0.401],
+              ['xy', 0.501, 0.399]
+            ],
+            ['width', 0.1]
+          ]
+        ]
+      ],
+      [
+        'fp_text',
+        'user',
+        'rep30',
+        ['at', 0, 0],
+        ['layer', 'Cmts.User'],
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+      ]
+    ]);
+  });
 });

@@ -253,12 +253,25 @@ function convertPad(args: string[], nets: string[], transform: IParentTransform)
     plated,
     locked
   ] = args;
+
   const shapes: { [key: string]: string } = {
     ELLIPSE: 'circle',
     RECT: 'rect',
     OVAL: 'oval',
     POLYGON: 'custom'
   };
+  const centerCoords = kiCoords(x, y);
+  const polygonTransform: IParentTransform = {
+    x: centerCoords.x,
+    y: centerCoords.y,
+    angle: transform?.angle
+  };
+  const isCustomShape = shapes[shape] === 'custom';
+  if (isCustomShape && !points.length) {
+    console.warn(`PAD ${id} is a polygon, but has no points defined`);
+    return null;
+  }
+
   const netId = nets.indexOf(net);
   const layers: { [key: string]: string[] } = {
     1: ['F.Cu', 'F.Paste', 'F.Mask'],
@@ -275,7 +288,17 @@ function convertPad(args: string[], nets: string[], transform: IParentTransform)
     ['size', kiUnits(width), kiUnits(height)],
     ['layers', ...layers[layerId]],
     getDrill(kiUnits(holeRadius), kiUnits(holeLength)),
-    netId > 0 ? ['net', netId, net] : null
+    netId > 0 ? ['net', netId, net] : null,
+    isCustomShape
+      ? [
+          'primitives',
+          [
+            'gr_poly',
+            ['pts', ...pointListToPolygon(points.split(' '), polygonTransform)],
+            ['width', 0.1]
+          ]
+        ]
+      : null
   ];
 }
 
@@ -306,18 +329,22 @@ export function convertCircle(args: string[], type = 'gr_circle', parentCoords?:
   ];
 }
 
+function pointListToPolygon(points: string[], parentCoords?: IParentTransform) {
+  const polygonPoints = [];
+  for (let i = 0; i < points.length; i += 2) {
+    const coords = kiCoords(points[i], points[i + 1], parentCoords);
+    polygonPoints.push(['xy', coords.x, coords.y]);
+  }
+  return polygonPoints;
+}
+
 function pathToPolygon(path: string, parentCoords?: IParentTransform) {
   if (path.indexOf('A') >= 0) {
     console.warn('Warning: SOLIDREGION with arcs/circles are not supported yet!');
     return null;
   }
-  const pointList = path.split(/[ ,LM]/).filter((p) => !isNaN(parseFloat(p)));
-  const polygonPoints = [];
-  for (let i = 0; i < pointList.length; i += 2) {
-    const coords = kiCoords(pointList[i], pointList[i + 1], parentCoords);
-    polygonPoints.push(['xy', coords.x, coords.y]);
-  }
-  return polygonPoints;
+  const points = path.split(/[ ,LM]/).filter((p) => !isNaN(parseFloat(p)));
+  return pointListToPolygon(points, parentCoords);
 }
 
 export function convertPolygon(args: string[], parentCoords?: IParentTransform) {
