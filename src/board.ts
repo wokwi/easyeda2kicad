@@ -96,6 +96,18 @@ function isCopper(layerName: string) {
   return layerName.endsWith('.Cu');
 }
 
+function getNetId(nets: string[], netName: string) {
+  if (!netName) {
+    return -1;
+  }
+  const index = nets.indexOf(netName);
+  if (index >= 0) {
+    return index;
+  }
+  nets.push(netName);
+  return nets.length - 1;
+}
+
 function convertVia(args: string[], nets: string[], parentCoords?: IParentTransform) {
   const [x, y, diameter, net, drill, id, locked] = args;
   return [
@@ -104,7 +116,7 @@ function convertVia(args: string[], nets: string[], parentCoords?: IParentTransf
     ['size', kiUnits(diameter)],
     ['drill', kiUnits(drill) * 2],
     ['layers', 'F.Cu', 'B.Cu'],
-    ['net', nets.indexOf(net)]
+    ['net', getNetId(nets, net)]
   ];
 }
 
@@ -115,7 +127,7 @@ export function convertTrack(
   parentCoords?: IParentTransform
 ) {
   const [width, layer, net, coords, id, locked] = args;
-  const netId = nets.indexOf(net);
+  const netId = getNetId(nets, net);
   const coordList = coords.split(' ');
   const result = [];
   const layerName = getLayerName(layer);
@@ -132,7 +144,7 @@ export function convertTrack(
       ),
       ['width', kiUnits(width)],
       ['layer', layerName],
-      netId > 0 ? ['net', netId] : null,
+      isCopper(layerName) && netId > 0 ? ['net', netId] : null,
       locked === '1' ? ['status', 40000] : null
     ]);
   }
@@ -272,7 +284,7 @@ function convertPad(args: string[], nets: string[], transform: IParentTransform)
     return null;
   }
 
-  const netId = nets.indexOf(net);
+  const netId = getNetId(nets, net);
   const layers: { [key: string]: string[] } = {
     1: ['F.Cu', 'F.Paste', 'F.Mask'],
     2: ['B.Cu', 'B.Paste', 'B.Mask'],
@@ -434,7 +446,7 @@ export function convertCopperArea(args: string[], nets: string[]) {
     copperZone,
     locked
   ] = args;
-  const netId = nets.indexOf(net);
+  const netId = getNetId(nets, net);
   // fill style: solid/none
   // id: gge27
   // thermal: spoke/direct
@@ -460,7 +472,7 @@ export function convertCopperArea(args: string[], nets: string[]) {
 export function convertSolidRegion(args: string[], nets: string[]) {
   const [layerId, net, path, type, id, locked] = args;
   const polygonPoints = pathToPolygon(path);
-  const netId = nets.indexOf(net);
+  const netId = getNetId(nets, net);
   if (!polygonPoints) {
     return null;
   }
@@ -517,7 +529,7 @@ export function convertHole(args: string[]) {
   ];
 }
 
-function convertShape(shape: string, nets: string[]) {
+export function convertShape(shape: string, nets: string[]) {
   const [type, ...args] = shape.split('~');
   switch (type) {
     case 'VIA':
@@ -551,10 +563,10 @@ function flatten<T>(arr: T[]) {
 export function convertBoard(input: IEasyEDABoard) {
   const { nets } = input.routerRule || { nets: [] as string[] };
   nets.unshift(''); // Kicad expects net 0 to be empty
-  const outputObjs = [
-    ...nets.map((net, idx) => ['net', idx, net]),
-    ...flatten(input.shape.map((shape) => convertShape(shape, nets)))
-  ].filter((obj) => obj != null);
+  const shapes = flatten(input.shape.map((shape) => convertShape(shape, nets)));
+  const outputObjs = [...nets.map((net, idx) => ['net', idx, net]), ...shapes].filter(
+    (obj) => obj != null
+  );
 
   const output = `
 (kicad_pcb (version 20171130) (host pcbnew "(5.0.2)-1")

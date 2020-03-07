@@ -4,6 +4,7 @@ import {
   convertCopperArea,
   convertHole,
   convertLib,
+  convertShape,
   convertSolidRegion,
   convertTrack
 } from './board';
@@ -61,6 +62,15 @@ describe('convertTrack', () => {
     expect(result.map(removeNulls)).toEqual([
       ['gr_line', ['start', 0, 0], ['end', 0, 7.62], ['width', 0.16002], ['layer', 'Edge.Cuts']]
     ]);
+  });
+
+  it('should add missing nets into the netlist (issue #29)', () => {
+    const input = 'TRACK~0.63~1~5V~4000 3000 4000 3030~gge606~0';
+    const netList = ['', 'GND'];
+    expect(normalize(convertShape(input, netList))).toEqual([
+      ['segment', ['start', 0, 0], ['end', 0, 7.62], ['width', 0.16], ['layer', 'F.Cu'], ['net', 2]]
+    ]);
+    expect(netList).toEqual(['', 'GND', '5V']);
   });
 });
 
@@ -139,11 +149,11 @@ describe('convertCopperArea', () => {
           '0',
           'yes'
         ],
-        []
+        ['', 'GND']
       )
     ).toEqual([
       'zone',
-      ['net', -1],
+      ['net', 1],
       ['net_name', 'GND'],
       ['layer', 'B.Cu'],
       ['hatch', 'edge', 0.508],
@@ -521,7 +531,8 @@ describe('convertLib()', () => {
   it('should correctly convert polygon-shaped pads (issue #28)', () => {
     const input =
       'LIB~612.25~388.7~package`0603`value`1.00k~~~rep30~1~c25f29e5d54148509f1fe8ecc29bd248~1549637911~0~#@$PAD~POLYGON~613.999~396.939~3.9399~3.14~1~GND~1~0~612.03 398.51 612.03 395.37 615.97 395.37 615.97 398.51~90~rep28~0~~Y~0~0~0.4~613.999,396.939#@$PAD~POLYGON~613.999~389.459~3.94~3.15~1~B-IN~2~0~612.03 391.03 612.03 387.88 615.97 387.88 615.97 391.03~90~rep29~0~~Y~0~0~0.4~613.999,389.459';
-    expect(normalize(convertLib(input.split('~').slice(1), []))).toEqual([
+    const nets = ['', 'GND', 'B-IN'];
+    expect(normalize(convertLib(input.split('~').slice(1), nets))).toEqual([
       'module',
       'easyeda:0603',
       ['layer', 'F.Cu'],
@@ -535,6 +546,7 @@ describe('convertLib()', () => {
         ['at', 0.444, 2.093, 90],
         ['size', 1.001, 0.798],
         ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
+        ['net', 1, 'GND'],
         [
           'primitives',
           [
@@ -558,6 +570,7 @@ describe('convertLib()', () => {
         ['at', 0.444, 0.193, 90],
         ['size', 1.001, 0.8],
         ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
+        ['net', 2, 'B-IN'],
         [
           'primitives',
           [
