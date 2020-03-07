@@ -276,7 +276,7 @@ function convertPad(args: string[], nets: string[], transform: IParentTransform)
   const polygonTransform: IParentTransform = {
     x: centerCoords.x,
     y: centerCoords.y,
-    angle: transform?.angle
+    angle: parseFloat(rotation)
   };
   const isCustomShape = shapes[shape] === 'custom';
   if (isCustomShape && !points.length) {
