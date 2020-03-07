@@ -12,10 +12,11 @@ function round(obj: ISpectraList | string | number, precision = 3): ISpectraList
     return obj.map((item) => round(item, precision));
   }
   if (typeof obj === 'number') {
-    if (obj > -Number.EPSILON && obj < Number.EPSILON) {
+    const result = parseFloat(obj.toFixed(precision));
+    if (result > -Number.EPSILON && result < Number.EPSILON) {
       return 0;
     }
-    return parseFloat(obj.toFixed(precision));
+    return result;
   }
   return obj;
 }
@@ -458,6 +459,75 @@ describe('convertLib()', () => {
         'fp_text',
         'user',
         'rep30',
+        ['at', 0, 0],
+        ['layer', 'Cmts.User'],
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+      ]
+    ]);
+  });
+
+  it('should enforce minimal width and height for polygon pads', () => {
+    const input =
+      'LIB~585.7~338.9~package`0603`value`1.00k~90~~gge35720~1~c25f29e5d54148509f1fe8ecc29bd248~1549637911~0~#@$PAD~POLYGON~593.939~338.901~0~0~1~SYNC-OUT~1~0~595.51 340.87 592.37 340.87 592.37 336.93 595.51 336.93~180~gge35721~0~~Y~0~0~0.4~593.939,338.901#@$PAD~POLYGON~586.459~338.901~3.15~3.94~1~SYNC-OUT~2~0~588.03 340.87 584.88 340.87 584.88 336.93 588.03 336.93~180~gge35727~0~~Y~0~0~0.4~586.459,338.901';
+    const nets = ['', 'GND', 'B-IN'];
+    expect(normalize(convertShape(input, nets)[0])).toEqual([
+      'module',
+      'easyeda:0603',
+      ['layer', 'F.Cu'],
+      ['at', -867.232, -675.919, 90],
+      ['attr', 'smd'],
+      [
+        'pad',
+        1,
+        'smd',
+        'custom',
+        ['at', 0, 2.093, 180],
+        ['size', 0.01, 0.01],
+        ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
+        ['net', 3, 'SYNC-OUT'],
+        [
+          'primitives',
+          [
+            'gr_poly',
+            [
+              'pts',
+              ['xy', -0.399, -0.5],
+              ['xy', 0.399, -0.5],
+              ['xy', 0.399, 0.501],
+              ['xy', -0.399, 0.501]
+            ],
+            ['width', 0.1]
+          ]
+        ]
+      ],
+      [
+        'pad',
+        2,
+        'smd',
+        'custom',
+        ['at', 0, 0.193, 180],
+        ['size', 0.8, 1.001],
+        ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
+        ['net', 3, 'SYNC-OUT'],
+        [
+          'primitives',
+          [
+            'gr_poly',
+            [
+              'pts',
+              ['xy', -0.399, -0.5],
+              ['xy', 0.401, -0.5],
+              ['xy', 0.401, 0.501],
+              ['xy', -0.399, 0.501]
+            ],
+            ['width', 0.1]
+          ]
+        ]
+      ],
+      [
+        'fp_text',
+        'user',
+        'gge35720',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
         ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]

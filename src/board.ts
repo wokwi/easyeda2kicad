@@ -297,7 +297,7 @@ function convertPad(args: string[], nets: string[], transform: IParentTransform)
     kiUnits(holeRadius) > 0 ? 'thru_hole' : 'smd',
     shapes[shape],
     kiAt(x, y, rotation, transform),
-    ['size', kiUnits(width), kiUnits(height)],
+    ['size', Math.max(kiUnits(width), 0.01), Math.max(kiUnits(height), 0.01)],
     ['layers', ...layers[layerId]],
     getDrill(kiUnits(holeRadius), kiUnits(holeLength)),
     netId > 0 ? ['net', netId, net] : null,
