@@ -120,7 +120,7 @@ function convertVia(args: string[], nets: string[], parentCoords?: IParentTransf
   ];
 }
 
-export function convertTrack(
+function convertTrack(
   args: string[],
   nets: string[],
   objName = 'segment',
@@ -204,7 +204,7 @@ function convertText(args: string[], objName = 'gr_text', parentCoords?: IParent
   ];
 }
 
-export function convertArc(args: string[], objName = 'gr_arc', transform?: IParentTransform) {
+function convertArc(args: string[], objName = 'gr_arc', transform?: IParentTransform) {
   const [width, layer, net, path, _, id, locked] = args;
   const [match, startPoint, arcParams] = /^M\s*([-\d.\s]+)A\s*([-\d.\s]+)$/.exec(
     path.replace(/[,\s]+/g, ' ')
@@ -329,7 +329,7 @@ function convertLibHole(args: string[], transform: IParentTransform) {
   ];
 }
 
-export function convertCircle(args: string[], type = 'gr_circle', parentCoords?: IParentTransform) {
+function convertCircle(args: string[], type = 'gr_circle', parentCoords?: IParentTransform) {
   const [x, y, radius, strokeWidth, layer, id, locked] = args;
   const center = kiCoords(x, y, parentCoords);
   return [
@@ -359,7 +359,7 @@ function pathToPolygon(path: string, parentCoords?: IParentTransform) {
   return pointListToPolygon(points, parentCoords);
 }
 
-export function convertPolygon(args: string[], parentCoords?: IParentTransform) {
+function convertPolygon(args: string[], parentCoords?: IParentTransform) {
   const [layerId, net, path, type, id, , , locked] = args;
   if (type !== 'solid') {
     console.log(`Warning: unsupported SOLIDREGION type in footprint: ${type}`);
@@ -372,7 +372,7 @@ export function convertPolygon(args: string[], parentCoords?: IParentTransform) 
   return ['fp_poly', ['pts', ...polygonPoints], ['layer', getLayerName(layerId)], ['width', 0]];
 }
 
-export function convertLib(args: string[], nets: string[]) {
+function convertLib(args: string[], nets: string[]) {
   const [x, y, attributes, rotation, importFlag, id, , , , locked] = args;
   const shapeList = args
     .join('~')
@@ -432,7 +432,7 @@ export function convertLib(args: string[], nets: string[]) {
   ];
 }
 
-export function convertCopperArea(args: string[], nets: string[]) {
+function convertCopperArea(args: string[], nets: string[]) {
   const [
     strokeWidth,
     layerId,
@@ -469,7 +469,7 @@ export function convertCopperArea(args: string[], nets: string[]) {
   ];
 }
 
-export function convertSolidRegion(args: string[], nets: string[]) {
+function convertSolidRegion(args: string[], nets: string[]) {
   const [layerId, net, path, type, id, locked] = args;
   const polygonPoints = pathToPolygon(path);
   const netId = getNetId(nets, net);
@@ -504,7 +504,7 @@ export function convertSolidRegion(args: string[], nets: string[]) {
   }
 }
 
-export function convertHole(args: string[]) {
+function convertHole(args: string[]) {
   const [x, y, radius, id, locked] = args;
   const size = kiUnits(radius) * 2;
   return [
@@ -535,7 +535,7 @@ export function convertShape(shape: string, nets: string[]) {
     case 'VIA':
       return [convertVia(args, nets)];
     case 'TRACK':
-      return [...convertTrack(args, nets)];
+      return convertTrack(args, nets);
     case 'TEXT':
       return [convertText(args)];
     case 'ARC':

@@ -1,13 +1,4 @@
-import {
-  convertArc,
-  convertCircle,
-  convertCopperArea,
-  convertHole,
-  convertLib,
-  convertShape,
-  convertSolidRegion,
-  convertTrack
-} from './board';
+import { convertShape } from './board';
 import { encodeObject, ISpectraList } from './spectra';
 
 function removeNulls(a: ISpectraList): ISpectraList {
@@ -35,32 +26,22 @@ function normalize(obj: ISpectraList) {
 
 describe('convertTrack', () => {
   it('should convert copper tracks into segments', () => {
-    const result = convertTrack(
-      ['0.63', '1', 'GND', '4000 3000 4000 3030', 'gge606', '0'],
-      ['', 'GND']
-    );
-    expect(result.map(removeNulls)).toEqual([
-      [
-        'segment',
-        ['start', 0, 0],
-        ['end', 0, 7.62],
-        ['width', 0.16002],
-        ['layer', 'F.Cu'],
-        ['net', 1]
-      ]
+    const input = 'TRACK~0.63~1~GND~4000 3000 4000 3030~gge606~0';
+    expect(normalize(convertShape(input, ['', 'GND']))).toEqual([
+      ['segment', ['start', 0, 0], ['end', 0, 7.62], ['width', 0.16], ['layer', 'F.Cu'], ['net', 1]]
     ]);
   });
 
   it(`should throw an error if the given layer number doesn't exist`, () => {
-    const fn = () =>
-      convertTrack(['0.63', '999', 'GND', '4000 3000 4000 3030', 'gge606', '0'], ['', 'GND']);
+    const input = 'TRACK~0.63~999~GND~4000 3000 4000 3030~gge606~0';
+    const fn = () => convertShape(input, ['', 'GND']);
     expect(fn).toThrow('Missing layer id: 999');
   });
 
   it('should convert non-copper layer tracks into gr_lines', () => {
-    const result = convertTrack(['0.63', '10', 'GND', '4000 3000 4000 3030', 'gge606', '0'], ['']);
-    expect(result.map(removeNulls)).toEqual([
-      ['gr_line', ['start', 0, 0], ['end', 0, 7.62], ['width', 0.16002], ['layer', 'Edge.Cuts']]
+    const input = 'TRACK~0.63~10~GND~4000 3000 4000 3030~gge606~0';
+    expect(normalize(convertShape(input, ['']))).toEqual([
+      ['gr_line', ['start', 0, 0], ['end', 0, 7.62], ['width', 0.16], ['layer', 'Edge.Cuts']]
     ]);
   });
 
@@ -76,51 +57,30 @@ describe('convertTrack', () => {
 
 describe('convertArc', () => {
   it('should convert arcs', () => {
-    expect(
-      encodeObject(
-        convertArc(['1', '10', '', 'M4050,3060 A10,10 0 0 1 4060,3050', '', 'gge276', '0'])
-      )
-    ).toEqual(
+    const input = 'ARC~1~10~~M4050,3060 A10,10 0 0 1 4060,3050~~gge276~0';
+    expect(encodeObject(convertShape(input, [])[0])).toEqual(
       '(gr_arc (start 15.24 15.24) (end 12.7 15.24) (angle 90) (width 0.254) (layer "Edge.Cuts"))'
     );
   });
 
   it('should parse different path formats', () => {
-    expect(
-      convertArc(['1', '10', '', 'M4000 3000A10 10 0 0 1 4050 3050', '', 'gge170', '0'])
-    ).toEqual([
-      'gr_arc',
-      ['start', 6.35, 6.35],
-      ['end', 0, 0],
-      ['angle', 180],
-      ['width', 0.254],
-      ['layer', 'Edge.Cuts']
-    ]);
+    const input = 'ARC~1~10~~M4000 3000A10 10 0 0 1 4050 3050~~gge170~0';
+    expect(encodeObject(convertShape(input, [])[0])).toEqual(
+      '(gr_arc (start 6.35 6.35) (end 0 0) (angle 180) (width 0.254) (layer "Edge.Cuts"))'
+    );
   });
 
   it('should support negative numbers in arc path', () => {
-    expect(
-      encodeObject(
-        convertArc([
-          '0.6',
-          '4',
-          '',
-          'M 3977.3789 3026.2151 A 28.4253 28.4253 -150 1 1 3977.6376 3026.643',
-          '',
-          'gge66',
-          '0'
-        ])
-      )
-    ).toEqual(
+    const input =
+      'ARC~0.6~4~~M 3977.3789 3026.2151 A 28.4253 28.4253 -150 1 1 3977.6376 3026.643~~gge66~0';
+    expect(encodeObject(convertShape(input, [])[0])).toEqual(
       '(gr_arc (start 0.465 2.978) (end -5.746 6.659) (angle 358.992) (width 0.152) (layer "B.SilkS"))'
     );
   });
 
   it('should correctly determine the arc start and end point (issue #16)', () => {
-    const arc = 'ARC~1~1~S$9~M4262.5,3279.5 A33.5596,33.5596 0 0 0 4245.5921,3315.5816~~gge8~0'
-      .split('~')
-      .slice(1);
-    expect(encodeObject(convertArc(arc))).toEqual(
+    const input = 'ARC~1~1~S$9~M4262.5,3279.5 A33.5596,33.5596 0 0 0 4245.5921,3315.5816~~gge8~0';
+    expect(encodeObject(convertShape(input, [])[0])).toEqual(
       '(gr_arc (start 70.739 78.486) (end 62.38 80.158) (angle 72.836) (width 0.254) (layer "F.Cu"))'
     );
   });
@@ -128,30 +88,9 @@ describe('convertArc', () => {
 
 describe('convertCopperArea', () => {
   it('should correctly parse the given SVG path', () => {
-    expect(
-      convertCopperArea(
-        [
-          '1',
-          '2',
-          'GND',
-          'M 4050 3050 L 4164 3050 L 4160 3120 L4050,3100 Z',
-          '1',
-          'solid',
-          'gge221',
-          'spoke',
-          'none',
-          '',
-          '0',
-          '',
-          '2',
-          '1',
-          '1',
-          '0',
-          'yes'
-        ],
-        ['', 'GND']
-      )
-    ).toEqual([
+    const input =
+      'COPPERAREA~1~2~GND~M 4050 3050 L 4164 3050 L 4160 3120 L4050,3100 Z~1~solid~gge221~spoke~none~~0~~2~1~1~0~yes';
+    expect(normalize(convertShape(input, ['', 'GND'])[0])).toEqual([
       'zone',
       ['net', 1],
       ['net_name', 'GND'],
@@ -168,19 +107,9 @@ describe('convertCopperArea', () => {
 
 describe('convertSolidRegion', () => {
   it('should correctly parse the given SVG path', () => {
-    expect(
-      convertSolidRegion(
-        [
-          '2',
-          'L3_2',
-          'M 4280 3173 L 4280 3127.5 L 4358.5 3128 L 4358.5 3163.625 L 4371.5 3163.625 L 4374.5 3168.625 L 4374.5 3173.125 L 4369 3173.125 L 4358.5 3173.125 L 4358.5 3179.625 L 4406.5 3179.625 L 4459 3179.5 L 4459 3252.5 L 4280.5 3253 L 4280 3173 Z',
-          'cutout',
-          'gge40',
-          '0'
-        ],
-        ['L3_2']
-      )
-    ).toEqual([
+    const input =
+      'SOLIDREGION~2~L3_2~M 4280 3173 L 4280 3127.5 L 4358.5 3128 L 4358.5 3163.625 L 4371.5 3163.625 L 4374.5 3168.625 L 4374.5 3173.125 L 4369 3173.125 L 4358.5 3173.125 L 4358.5 3179.625 L 4406.5 3179.625 L 4459 3179.5 L 4459 3252.5 L 4280.5 3253 L 4280 3173 Z~cutout~gge40~0';
+    expect(normalize(convertShape(input, ['L3_2'])[0])).toEqual([
       'zone',
       ['net', 0],
       ['net_name', ''],
@@ -191,49 +120,37 @@ describe('convertSolidRegion', () => {
         'polygon',
         [
           'pts',
-          ['xy', 71.11999999999999, 43.942],
-          ['xy', 71.11999999999999, 32.385],
+          ['xy', 71.12, 43.942],
+          ['xy', 71.12, 32.385],
           ['xy', 91.059, 32.512],
-          ['xy', 91.059, 41.56075],
-          ['xy', 94.36099999999999, 41.56075],
-          ['xy', 95.12299999999999, 42.830749999999995],
-          ['xy', 95.12299999999999, 43.973749999999995],
-          ['xy', 93.726, 43.973749999999995],
-          ['xy', 91.059, 43.973749999999995],
-          ['xy', 91.059, 45.62475],
-          ['xy', 103.25099999999999, 45.62475],
-          ['xy', 116.586, 45.592999999999996],
-          ['xy', 116.586, 64.13499999999999],
+          ['xy', 91.059, 41.561],
+          ['xy', 94.361, 41.561],
+          ['xy', 95.123, 42.831],
+          ['xy', 95.123, 43.974],
+          ['xy', 93.726, 43.974],
+          ['xy', 91.059, 43.974],
+          ['xy', 91.059, 45.625],
+          ['xy', 103.251, 45.625],
+          ['xy', 116.586, 45.593],
+          ['xy', 116.586, 64.135],
           ['xy', 71.247, 64.262],
-          ['xy', 71.11999999999999, 43.942]
+          ['xy', 71.12, 43.942]
         ]
       ]
     ]);
   });
 
   it('should ignore solid regions with circles (issue #12)', () => {
-    expect(
-      convertSolidRegion(
-        [
-          '1',
-          '',
-          'M 4367 3248 A 33.8 33.8 0 1 0 4366.99 3248 Z ',
-          'cutout',
-          'gge1953',
-          '',
-          '',
-          '',
-          '0'
-        ],
-        []
-      )
-    ).toEqual(null);
+    const input =
+      'SOLIDREGION~1~~M 4367 3248 A 33.8 33.8 0 1 0 4366.99 3248 Z ~cutout~gge1953~~~~0';
+    expect(normalize(convertShape(input, []))).toEqual([]);
   });
 });
 
 describe('convertHole()', () => {
   it('should convert HOLE into KiCad footprint', () => {
-    expect(normalize(convertHole(['4475.5', '3170.5', '2.9528', 'gge1205', '1']))).toEqual([
+    const input = 'HOLE~4475.5~3170.5~2.9528~gge1205~1';
+    expect(normalize(convertShape(input, [])[0])).toEqual([
       'module',
       'AutoGenerated:MountingHole_1.50mm',
       'locked',
@@ -258,9 +175,8 @@ describe('convertHole()', () => {
 
 describe('convert circle', () => {
   it('should correctly determine the end point according to radius', () => {
-    expect(
-      round(convertCircle(['4000', '3000', '12.4', '1', '3', 'gge635', '0', '', '']))
-    ).toEqual([
+    const input = 'CIRCLE~4000~3000~12.4~1~3~gge635~0~';
+    expect(normalize(convertShape(input, [])[0])).toEqual([
       'gr_circle',
       ['center', 0, 0],
       ['end', 3.15, 0],
@@ -272,25 +188,9 @@ describe('convert circle', () => {
 
 describe('convertLib()', () => {
   it('should include the footprint name in the exported module', () => {
-    expect(
-      normalize(
-        convertLib(
-          [
-            '4228',
-            '3187.5',
-            'package`1206`',
-            '270',
-            '',
-            'gge12',
-            '2',
-            'a8f323e85d754372811837f27f204a01',
-            '1564555550',
-            '0'
-          ],
-          []
-        )
-      )
-    ).toEqual([
+    const input =
+      'LIB~4228~3187.5~package`1206`~270~~gge12~2~a8f323e85d754372811837f27f204a01~1564555550~0';
+    expect(normalize(convertShape(input, [])[0])).toEqual([
       'module',
       'easyeda:1206',
       ['layer', 'F.Cu'],
@@ -307,28 +207,12 @@ describe('convertLib()', () => {
   });
 
   it('should correctly orient footprint elements', () => {
+    const lib =
+      'LIB~4228~3187.5~package`1206`~270~~gge12~2~a8f323e85d754372811837f27f204a01~1564555550~0';
     const pad =
       '#@$PAD~ELLIPSE~4010~3029~4~4~11~SEG1C~4~1.5~~270~gge181~0~~Y~0~0~0.4~4010.05,3029.95';
-    expect(
-      normalize(
-        convertLib(
-          [
-            '4228',
-            '3187.5',
-            'package`1206`',
-            '270',
-            '',
-            'gge12',
-            '2',
-            'a8f323e85d754372811837f27f204a01',
-            '1564555550',
-            '0',
-            ...pad.split('~')
-          ],
-          []
-        )
-      )
-    ).toEqual([
+    const input = lib + pad;
+    expect(normalize(convertShape(input, [])[0])).toEqual([
       'module',
       'easyeda:1206',
       ['layer', 'F.Cu'],
@@ -355,28 +239,12 @@ describe('convertLib()', () => {
   });
 
   it('should correctly orient text inside footprints', () => {
+    const lib =
+      'LIB~4228~3187.5~package`1206`~270~~gge12~2~a8f323e85d754372811837f27f204a01~1564555550~0';
     const text =
       '#@$TEXT~N~4363~3153~0.6~90~~3~~4.5~0.5pF~M 4359.51 3158.63 L 4359.71 3159.25~none~gge188~~0~';
-    expect(
-      normalize(
-        convertLib(
-          [
-            '4228',
-            '3187.5',
-            'package`1206`',
-            '270',
-            '',
-            'gge12',
-            '2',
-            'a8f323e85d754372811837f27f204a01',
-            '1564555550',
-            '0',
-            ...text.split('~')
-          ],
-          []
-        )
-      )
-    ).toEqual([
+    const input = lib + text;
+    expect(normalize(convertShape(input, [])[0])).toEqual([
       'module',
       'easyeda:1206',
       ['layer', 'F.Cu'],
@@ -403,9 +271,9 @@ describe('convertLib()', () => {
 
   it('should correctly convert pad offsets (issue #11)', () => {
     const input =
-      'LaIB~4177~3107~package`0402`3DModel`R_0603_1608Metric`~90~~gge464~1~405bb71866794ab59459d3b2854a4d33~1541687137~0~#@$TEXT~P~4173.31~3108.77~0.5~90~0~3~~2.4~R2~M 4172.0001 3108.77 L 4174.2901 3108.77 M 4172.0001 3108.77 L 4172.0001 3107.79 L 4172.1101 3107.46 L 4172.2201 3107.35 L 4172.4401 3107.24 L 4172.6601 3107.24 L 4172.8701 3107.35 L 4172.9801 3107.46 L 4173.0901 3107.79 L 4173.0901 3108.77 M 4173.0901 3108.01 L 4174.2901 3107.24 M 4172.5501 3106.41 L 4172.4401 3106.41 L 4172.2201 3106.3 L 4172.1101 3106.2 L 4172.0001 3105.98 L 4172.0001 3105.54 L 4172.1101 3105.32 L 4172.2201 3105.21 L 4172.4401 3105.1 L 4172.6601 3105.1 L 4172.8701 3105.21 L 4173.2001 3105.43 L 4174.2901 3106.52 L 4174.2901 3105~~gge467~~0~#@$TEXT~N~4160~3102.72~0.5~90~0~3~~4.5~2K2~M 4158.57 3102.52 L 4158.36 3102.52 L 4157.95 3102.31 L 4157.75 3102.11 L 4157.55 3101.7 L 4157.55 3100.88 L 4157.75 3100.47 L 4157.95 3100.27 L 4158.36 3100.06 L 4158.77 3100.06 L 4159.18 3100.27 L 4159.8 3100.67 L 4161.84 3102.72 L 4161.84 3099.86 M 4157.55 3098.51 L 4161.84 3098.51 M 4157.55 3095.64 L 4160.41 3098.51 M 4159.39 3097.48 L 4161.84 3095.64 M 4158.57 3094.09 L 4158.36 3094.09 L 4157.95 3093.88 L 4157.75 3093.68 L 4157.55 3093.27 L 4157.55 3092.45 L 4157.75 3092.04 L 4157.95 3091.84 L 4158.36 3091.63 L 4158.77 3091.63 L 4159.18 3091.84 L 4159.8 3092.25 L 4161.84 3094.29 L 4161.84 3091.43~none~gge468~~0~#@$PAD~RECT~4177~3108.67~2.362~2.559~1~SWCLK~1~0~4175.72 3109.85 4175.72 3107.49 4178.28 3107.49 4178.28 3109.85~90~gge466~0~~Y~0~0~0.4~4177,3108.67#@$SVGNODE~{"gId":"gge464_outline","nodeName":"g","nodeType":1,"layerid":"19","attrs":{"c_width":"6.4","c_height":"3.1898","c_rotation":"0,0,90","z":"0","c_origin":"4177,3107.03","uuid":"14d29194d76d4abda3f419dd15e5ae1e","c_etype":"outline3D","id":"gge464_outline","title":"R_0603_1608Metric","layerid":"19","transform":"scale(10.1587) translate(-3765.8265, -2801.1817)","style":""},"childNodes":[{"gId":"gge464_outline_line0","nodeName":"polyline","nodeType":1,"attrs":{"fill":"none","id":"gge464_outline_line0","c_shapetype":"line","points":"4176.843 3107.345 4177.157 3107.345 4177.157 3107.343 4177.157 3107.341 4177.157 3107.338 4177.157 3107.335 4177.157 3107.331 4177.157 3107.327 4177.157 3107.245 4177.157 3107.241 4177.157 3107.237 4177.157 3107.234 4177.157 3107.231 4177.157 3107.229 4177.157 3107.227 4177.157 3106.833 4177.157 3106.831 4177.157 3106.829 4177.157 3106.826 4177.157 3106.823 4177.157 3106.819 4177.157 3106.815 4177.157 3106.733 4177.157 3106.729 4177.157 3106.725 4177.157 3106.722 4177.157 3106.719 4177.157 3106.717 4177.157 3106.715 4176.843 3106.715 4176.843 3106.717 4176.843 3106.719 4176.843 3106.722 4176.843 3106.725 4176.843 3106.729 4176.843 3106.733 4176.843 3106.815 4176.843 3106.819 4176.843 3106.823 4176.843 3106.826 4176.843 3106.829 4176.843 3106.831 4176.843 3106.833 4176.843 3107.227 4176.843 3107.229 4176.843 3107.231 4176.843 3107.234 4176.843 3107.237 4176.843 3107.241 4176.843 3107.245 4176.843 3107.327 4176.843 3107.331 4176.843 3107.335 4176.843 3107.338 4176.843 3107.341 4176.843 3107.343 4176.843 3107.345 4176.843 3107.345';
+      'LIB~4177~3107~package`0402`3DModel`R_0603_1608Metric`~90~~gge464~1~405bb71866794ab59459d3b2854a4d33~1541687137~0~#@$TEXT~P~4173.31~3108.77~0.5~90~0~3~~2.4~R2~M 4172.0001 3108.77 L 4174.2901 3108.77 M 4172.0001 3108.77 L 4172.0001 3107.79 L 4172.1101 3107.46 L 4172.2201 3107.35 L 4172.4401 3107.24 L 4172.6601 3107.24 L 4172.8701 3107.35 L 4172.9801 3107.46 L 4173.0901 3107.79 L 4173.0901 3108.77 M 4173.0901 3108.01 L 4174.2901 3107.24 M 4172.5501 3106.41 L 4172.4401 3106.41 L 4172.2201 3106.3 L 4172.1101 3106.2 L 4172.0001 3105.98 L 4172.0001 3105.54 L 4172.1101 3105.32 L 4172.2201 3105.21 L 4172.4401 3105.1 L 4172.6601 3105.1 L 4172.8701 3105.21 L 4173.2001 3105.43 L 4174.2901 3106.52 L 4174.2901 3105~~gge467~~0~#@$TEXT~N~4160~3102.72~0.5~90~0~3~~4.5~2K2~M 4158.57 3102.52 L 4158.36 3102.52 L 4157.95 3102.31 L 4157.75 3102.11 L 4157.55 3101.7 L 4157.55 3100.88 L 4157.75 3100.47 L 4157.95 3100.27 L 4158.36 3100.06 L 4158.77 3100.06 L 4159.18 3100.27 L 4159.8 3100.67 L 4161.84 3102.72 L 4161.84 3099.86 M 4157.55 3098.51 L 4161.84 3098.51 M 4157.55 3095.64 L 4160.41 3098.51 M 4159.39 3097.48 L 4161.84 3095.64 M 4158.57 3094.09 L 4158.36 3094.09 L 4157.95 3093.88 L 4157.75 3093.68 L 4157.55 3093.27 L 4157.55 3092.45 L 4157.75 3092.04 L 4157.95 3091.84 L 4158.36 3091.63 L 4158.77 3091.63 L 4159.18 3091.84 L 4159.8 3092.25 L 4161.84 3094.29 L 4161.84 3091.43~none~gge468~~0~#@$PAD~RECT~4177~3108.67~2.362~2.559~1~SWCLK~1~0~4175.72 3109.85 4175.72 3107.49 4178.28 3107.49 4178.28 3109.85~90~gge466~0~~Y~0~0~0.4~4177,3108.67#@$SVGNODE~{"gId":"gge464_outline","nodeName":"g","nodeType":1,"layerid":"19","attrs":{"c_width":"6.4","c_height":"3.1898","c_rotation":"0,0,90","z":"0","c_origin":"4177,3107.03","uuid":"14d29194d76d4abda3f419dd15e5ae1e","c_etype":"outline3D","id":"gge464_outline","title":"R_0603_1608Metric","layerid":"19","transform":"scale(10.1587) translate(-3765.8265, -2801.1817)","style":""},"childNodes":[{"gId":"gge464_outline_line0","nodeName":"polyline","nodeType":1,"attrs":{"fill":"none","id":"gge464_outline_line0","c_shapetype":"line","points":"4176.843 3107.345 4177.157 3107.345 4177.157 3107.343 4177.157 3107.341 4177.157 3107.338 4177.157 3107.335 4177.157 3107.331 4177.157 3107.327 4177.157 3107.245 4177.157 3107.241 4177.157 3107.237 4177.157 3107.234 4177.157 3107.231 4177.157 3107.229 4177.157 3107.227 4177.157 3106.833 4177.157 3106.831 4177.157 3106.829 4177.157 3106.826 4177.157 3106.823 4177.157 3106.819 4177.157 3106.815 4177.157 3106.733 4177.157 3106.729 4177.157 3106.725 4177.157 3106.722 4177.157 3106.719 4177.157 3106.717 4177.157 3106.715 4176.843 3106.715 4176.843 3106.717 4176.843 3106.719 4176.843 3106.722 4176.843 3106.725 4176.843 3106.729 4176.843 3106.733 4176.843 3106.815 4176.843 3106.819 4176.843 3106.823 4176.843 3106.826 4176.843 3106.829 4176.843 3106.831 4176.843 3106.833 4176.843 3107.227 4176.843 3107.229 4176.843 3107.231 4176.843 3107.234 4176.843 3107.237 4176.843 3107.241 4176.843 3107.245 4176.843 3107.327 4176.843 3107.331 4176.843 3107.335 4176.843 3107.338 4176.843 3107.341 4176.843 3107.343 4176.843 3107.345 4176.843 3107.345';
 
-    expect(normalize(convertLib(input.split(/~/g).slice(1), ['', '+3V3', 'SWCLK']))).toEqual([
+    expect(normalize(convertShape(input, ['', '+3V3', 'SWCLK'])[0])).toEqual([
       'module',
       'easyeda:0402',
       ['layer', 'F.Cu'],
@@ -453,7 +321,7 @@ describe('convertLib()', () => {
     const input =
       'LIB~4401~3164~package`IEC_HIGHVOLTAGE_SMALL`~~~gge846~1~~~0~#@$SOLIDREGION~3~~M 4400.3 3160.5 L 4401.8 3160.5 L 4399.1 3165.8 L 4402.9 3164.7 L 4400.9 3169.3 L 4401.7 3169.1 L 4400.1 3170.9 L 4399.8 3168.8 L 4400.3 3169.2 L 4401.3 3165.9 L 4397.6 3167.1 Z ~solid~gge849~~~~0';
 
-    expect(normalize(convertLib(input.split(/~/g).slice(1), ['']))).toEqual([
+    expect(normalize(convertShape(input, [''])[0])).toEqual([
       'module',
       'easyeda:IEC_HIGHVOLTAGE_SMALL',
       ['layer', 'F.Cu'],
@@ -492,7 +360,7 @@ describe('convertLib()', () => {
     const input =
       'LIB~4401~3164~package`IEC_HIGHVOLTAGE_SMALL`~~~gge846~1~~~0~#@$#@$SOLIDREGION~3~~M 4513.5 3294 A 12.125 12.125 0 0 1 4495.5 3294 Z ~solid~gge636~~~~0';
 
-    expect(normalize(convertLib(input.split(/~/g).slice(1), ['']))).toEqual([
+    expect(normalize(convertShape(input, [''])[0])).toEqual([
       'module',
       'easyeda:IEC_HIGHVOLTAGE_SMALL',
       ['layer', 'F.Cu'],
@@ -511,7 +379,7 @@ describe('convertLib()', () => {
   it('should not respected the locked attribute (issue #23)', () => {
     const input = 'LIB~4050~3050~package`Test`~~~gge123~1~~~1~';
 
-    expect(normalize(convertLib(input.split(/~/g).slice(1), ['']))).toEqual([
+    expect(normalize(convertShape(input, [''])[0])).toEqual([
       'module',
       'easyeda:Test',
       'locked',
@@ -532,7 +400,7 @@ describe('convertLib()', () => {
     const input =
       'LIB~612.25~388.7~package`0603`value`1.00k~~~rep30~1~c25f29e5d54148509f1fe8ecc29bd248~1549637911~0~#@$PAD~POLYGON~613.999~396.939~3.9399~3.14~1~GND~1~0~612.03 398.51 612.03 395.37 615.97 395.37 615.97 398.51~90~rep28~0~~Y~0~0~0.4~613.999,396.939#@$PAD~POLYGON~613.999~389.459~3.94~3.15~1~B-IN~2~0~612.03 391.03 612.03 387.88 615.97 387.88 615.97 391.03~90~rep29~0~~Y~0~0~0.4~613.999,389.459';
     const nets = ['', 'GND', 'B-IN'];
-    expect(normalize(convertLib(input.split('~').slice(1), nets))).toEqual([
+    expect(normalize(convertShape(input, nets)[0])).toEqual([
       'module',
       'easyeda:0603',
       ['layer', 'F.Cu'],
