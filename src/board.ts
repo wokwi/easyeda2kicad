@@ -152,6 +152,39 @@ function convertPadToVia(args: string[], nets: string[], parentCoords?: IParentT
     ['net', nets.indexOf(net)]
   ];
 }
+function convertPadToVia(args: string[], nets: string[], parentCoords?: IParentTransform) {
+  const [
+    shape,
+    x,
+    y,
+    holeRadius,
+    height,
+    layerId,
+    net,
+    num,
+    drill,
+    points,
+    rotation,
+    id,
+    holeLength,
+    holePoints,
+    plated,
+    locked
+  ] = args;
+
+  if (shape === 'RECT') {
+    convertPad(args, nets, parentCoords);
+    return;
+  }
+  return [
+    'via',
+    kiAt(x, y, null, parentCoords),
+    ['size', kiUnits(holeRadius)],
+    ['drill', kiUnits(drill) * 2],
+    ['layers', 'F.Cu', 'B.Cu'],
+    ['net', nets.indexOf(net)]
+  ];
+}
 
 function convertTrack(
   args: string[],
