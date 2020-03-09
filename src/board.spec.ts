@@ -58,33 +58,12 @@ describe('convertTrack', () => {
 
 describe('convertPadToVia', () => {
   it('should correctly parse a PAD and convert it to a Via', () => {
-    expect(
-      convertPadToVia(
-        [
-          'ELLIPSE',
-          '0',
-          '0',
-          '2.4',
-          '2.4',
-          '11',
-          'VCC3V3',
-          '',
-          '0.6',
-          '',
-          '0',
-          'gge19',
-          '0',
-          '',
-          'Y',
-          '0',
-        ],
-        []
-      )
-    ).toEqual([
+    const input = 'PAD~ELLIPSE~4150~3071.5~6~6~11~GND~1~1.8~~0~gge196~0~~Y~0~~~4150,3071.5';
+    expect(normalize(convertShape(input, [])[0])).toEqual([
       'via',
-      ['at', 0, 0],
-      ['size', 0.61],
-      ['drill', 0.305],
+      ['at', 38.1, 18.161],
+      ['size', 1.524],
+      ['drill', 0.914],
       ['layers', 'F.Cu', 'B.Cu'],
       ['net', -1]
     ]);
