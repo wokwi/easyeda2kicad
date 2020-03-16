@@ -619,6 +619,8 @@ export function convertShape(shape: string, nets: string[]) {
       return [convertHole(args)];
     case 'LIB':
       return [convertLib(args, nets)];
+    case 'PAD':
+      return [convertPadToVia(args, nets)];
     default:
       console.warn(`Warning: unsupported shape ${type}`);
       return null;
