@@ -246,6 +246,27 @@ function getDrill(holeRadius: number, holeLength: number) {
   return null;
 }
 
+function isRectangle(points: number[]) {
+  if (points.length !== 8) {
+    return false;
+  }
+
+  const eq = (a: number, b: number) => Math.abs(a - b) < 0.01;
+
+  const [x1, y1, x2, y2, x3, y3, x4, y4] = points;
+  return (
+    (eq(x1, x2) && eq(y2, y3) && eq(x3, x4) && eq(y4, y1)) ||
+    (eq(y1, y2) && eq(x2, x3) && eq(y3, y4) && eq(x4, x1))
+  );
+}
+
+function rectangleSize(points: number[], rotation: number) {
+  const [x1, y1, x2, y2, x3, y3, x4, y4] = points;
+  const width = Math.max(x1, x2, x3, x4) - Math.min(x1, x2, x3, x4);
+  const height = Math.max(y1, y2, y3, y4) - Math.min(y1, y2, y3, y4);
+  return Math.round(Math.abs(rotation)) % 180 === 90 ? [height, width] : [width, height];
+}
+
 function convertPad(args: string[], nets: string[], transform: IParentTransform) {
   const [
     shape,
@@ -278,7 +299,10 @@ function convertPad(args: string[], nets: string[], transform: IParentTransform)
     y: centerCoords.y,
     angle: parseFloat(rotation)
   };
-  const isCustomShape = shapes[shape] === 'custom';
+  const pointList = points.split(' ').map(parseFloat);
+  const pointsAreRectangle = shapes[shape] === 'custom' && isRectangle(pointList);
+  const actualShape = pointsAreRectangle ? 'RECT' : shape;
+  const isCustomShape = shapes[actualShape] === 'custom';
   if (isCustomShape && !points.length) {
     console.warn(`PAD ${id} is a polygon, but has no points defined`);
     return null;
@@ -290,14 +314,17 @@ function convertPad(args: string[], nets: string[], transform: IParentTransform)
     2: ['B.Cu', 'B.Paste', 'B.Mask'],
     11: ['*.Cu', '*.Paste', '*.Mask']
   };
+  const [actualWidth, actualHeight] = pointsAreRectangle
+    ? rectangleSize(pointList, parseFloat(rotation))
+    : [width, height];
   const padNum = parseInt(num, 10);
   return [
     'pad',
     isNaN(padNum) ? num : padNum,
     kiUnits(holeRadius) > 0 ? 'thru_hole' : 'smd',
-    shapes[shape],
+    shapes[actualShape],
     kiAt(x, y, rotation, transform),
-    ['size', Math.max(kiUnits(width), 0.01), Math.max(kiUnits(height), 0.01)],
+    ['size', Math.max(kiUnits(actualWidth), 0.01), Math.max(kiUnits(actualHeight), 0.01)],
     ['layers', ...layers[layerId]],
     getDrill(kiUnits(holeRadius), kiUnits(holeLength)),
     netId > 0 ? ['net', netId, net] : null,

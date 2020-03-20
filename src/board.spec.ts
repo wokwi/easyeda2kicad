@@ -397,9 +397,9 @@ describe('convertLib()', () => {
     ]);
   });
 
-  it('should correctly convert polygon-shaped pads (issue #28)', () => {
+  it('should correctly convert non-rectangular polygon-shaped pads (issue #28)', () => {
     const input =
-      'LIB~612.25~388.7~package`0603`value`1.00k~~~rep30~1~c25f29e5d54148509f1fe8ecc29bd248~1549637911~0~#@$PAD~POLYGON~613.999~396.939~3.9399~3.14~1~GND~1~0~612.03 398.51 612.03 395.37 615.97 395.37 615.97 398.51~90~rep28~0~~Y~0~0~0.4~613.999,396.939#@$PAD~POLYGON~613.999~389.459~3.94~3.15~1~B-IN~2~0~612.03 391.03 612.03 387.88 615.97 387.88 615.97 391.03~90~rep29~0~~Y~0~0~0.4~613.999,389.459';
+      'LIB~612.25~388.7~package`0603`value`1.00k~~~rep30~1~c25f29e5d54148509f1fe8ecc29bd248~1549637911~0~#@$PAD~POLYGON~613.999~396.939~3.9399~3.14~1~GND~1~0~612.03 398.51 612.03 395.37 615.97 398.51~90~rep28~0~~Y~0~0~0.4~613.999,396.939';
     const nets = ['', 'GND', 'B-IN'];
     expect(normalize(convertShape(input, nets)[0])).toEqual([
       'module',
@@ -420,37 +420,7 @@ describe('convertLib()', () => {
           'primitives',
           [
             'gr_poly',
-            [
-              'pts',
-              ['xy', -0.399, -0.5],
-              ['xy', 0.399, -0.5],
-              ['xy', 0.399, 0.501],
-              ['xy', -0.399, 0.501]
-            ],
-            ['width', 0.1]
-          ]
-        ]
-      ],
-      [
-        'pad',
-        2,
-        'smd',
-        'custom',
-        ['at', 0.444, 0.193, 90],
-        ['size', 1.001, 0.8],
-        ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
-        ['net', 2, 'B-IN'],
-        [
-          'primitives',
-          [
-            'gr_poly',
-            [
-              'pts',
-              ['xy', -0.399, -0.5],
-              ['xy', 0.401, -0.5],
-              ['xy', 0.401, 0.501],
-              ['xy', -0.399, 0.501]
-            ],
+            ['pts', ['xy', -0.399, -0.5], ['xy', 0.399, -0.5], ['xy', -0.399, 0.501]],
             ['width', 0.1]
           ]
         ]
@@ -468,7 +438,7 @@ describe('convertLib()', () => {
 
   it('should enforce minimal width and height for polygon pads', () => {
     const input =
-      'LIB~585.7~338.9~package`0603`value`1.00k~90~~gge35720~1~c25f29e5d54148509f1fe8ecc29bd248~1549637911~0~#@$PAD~POLYGON~593.939~338.901~0~0~1~SYNC-OUT~1~0~595.51 340.87 592.37 340.87 592.37 336.93 595.51 336.93~180~gge35721~0~~Y~0~0~0.4~593.939,338.901#@$PAD~POLYGON~586.459~338.901~3.15~3.94~1~SYNC-OUT~2~0~588.03 340.87 584.88 340.87 584.88 336.93 588.03 336.93~180~gge35727~0~~Y~0~0~0.4~586.459,338.901';
+      'LIB~585.7~338.9~package`0603`value`1.00k~90~~gge35720~1~c25f29e5d54148509f1fe8ecc29bd248~1549637911~0~#@$PAD~POLYGON~593.939~338.901~0~0~1~SYNC-OUT~1~0~595.51 340.87 592.37 340.87 595.51 336.93~180~gge35721~0~~Y~0~0~0.4~593.939,338.901';
     const nets = ['', 'GND', 'B-IN'];
     expect(normalize(convertShape(input, nets)[0])).toEqual([
       'module',
@@ -489,40 +459,51 @@ describe('convertLib()', () => {
           'primitives',
           [
             'gr_poly',
-            [
-              'pts',
-              ['xy', -0.399, -0.5],
-              ['xy', 0.399, -0.5],
-              ['xy', 0.399, 0.501],
-              ['xy', -0.399, 0.501]
-            ],
+            ['pts', ['xy', -0.399, -0.5], ['xy', 0.399, -0.5], ['xy', -0.399, 0.501]],
             ['width', 0.1]
           ]
         ]
       ],
       [
+        'fp_text',
+        'user',
+        'gge35720',
+        ['at', 0, 0],
+        ['layer', 'Cmts.User'],
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+      ]
+    ]);
+  });
+
+  it('should automatically detect rectangular pads that are defined as polygons (issue #28)', () => {
+    const input =
+      'LIB~585.7~338.9~package`0603`value`1.00k~90~~gge35720~1~c25f29e5d54148509f1fe8ecc29bd248~1549637911~0~#@$PAD~POLYGON~593.939~338.901~0~0~1~SYNC-OUT~1~0~595.51 340.87 592.37 340.87 592.37 336.93 595.51 336.93~180~gge35721~0~~Y~0~0~0.4~593.939,338.901#@$PAD~POLYGON~586.459~338.901~3.15~3.94~1~SYNC-OUT~2~0~588.03 340.87 584.88 340.87 584.88 336.93 588.03 336.93~180~gge35727~0~~Y~0~0~0.4~586.459,338.901';
+    const nets = ['', 'GND', 'B-IN'];
+    expect(normalize(convertShape(input, nets)[0])).toEqual([
+      'module',
+      'easyeda:0603',
+      ['layer', 'F.Cu'],
+      ['at', -867.232, -675.919, 90],
+      ['attr', 'smd'],
+      [
+        'pad',
+        1,
+        'smd',
+        'rect',
+        ['at', 0, 2.093, 180],
+        ['size', 0.798, 1.001],
+        ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
+        ['net', 3, 'SYNC-OUT']
+      ],
+      [
         'pad',
         2,
         'smd',
-        'custom',
+        'rect',
         ['at', 0, 0.193, 180],
         ['size', 0.8, 1.001],
         ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
-        ['net', 3, 'SYNC-OUT'],
-        [
-          'primitives',
-          [
-            'gr_poly',
-            [
-              'pts',
-              ['xy', -0.399, -0.5],
-              ['xy', 0.401, -0.5],
-              ['xy', 0.401, 0.501],
-              ['xy', -0.399, 0.501]
-            ],
-            ['width', 0.1]
-          ]
-        ]
+        ['net', 3, 'SYNC-OUT']
       ],
       [
         'fp_text',
