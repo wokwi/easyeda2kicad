@@ -29,7 +29,14 @@ describe('convertTrack', () => {
   it('should convert copper tracks into segments', () => {
     const input = 'TRACK~0.63~1~GND~4000 3000 4000 3030~gge606~0';
     expect(normalize(convertShape(input, ['', 'GND']))).toEqual([
-      ['segment', ['start', 0, 0], ['end', 0, 7.62], ['width', 0.16], ['layer', 'F.Cu'], ['net', 1]]
+      [
+        'segment',
+        ['start', 0, 0],
+        ['end', 0, 7.62],
+        ['width', 0.16],
+        ['layer', 'F.Cu'],
+        ['net', 1],
+      ],
     ]);
   });
 
@@ -42,7 +49,7 @@ describe('convertTrack', () => {
   it('should convert non-copper layer tracks into gr_lines', () => {
     const input = 'TRACK~0.63~10~GND~4000 3000 4000 3030~gge606~0';
     expect(normalize(convertShape(input, ['']))).toEqual([
-      ['gr_line', ['start', 0, 0], ['end', 0, 7.62], ['width', 0.16], ['layer', 'Edge.Cuts']]
+      ['gr_line', ['start', 0, 0], ['end', 0, 7.62], ['width', 0.16], ['layer', 'Edge.Cuts']],
     ]);
   });
 
@@ -50,7 +57,14 @@ describe('convertTrack', () => {
     const input = 'TRACK~0.63~1~5V~4000 3000 4000 3030~gge606~0';
     const netList = ['', 'GND'];
     expect(normalize(convertShape(input, netList))).toEqual([
-      ['segment', ['start', 0, 0], ['end', 0, 7.62], ['width', 0.16], ['layer', 'F.Cu'], ['net', 2]]
+      [
+        'segment',
+        ['start', 0, 0],
+        ['end', 0, 7.62],
+        ['width', 0.16],
+        ['layer', 'F.Cu'],
+        ['net', 2],
+      ],
     ]);
     expect(netList).toEqual(['', 'GND', '5V']);
   });
@@ -65,7 +79,7 @@ describe('convertPadToVia', () => {
       ['size', 1.524],
       ['drill', 0.914],
       ['layers', 'F.Cu', 'B.Cu'],
-      ['net', 0]
+      ['net', 0],
     ]);
   });
 
@@ -88,8 +102,8 @@ describe('convertPadToVia', () => {
         ['size', 1.524, 1.524],
         ['layers', '*.Cu', '*.Paste', '*.Mask'],
         ['drill', 0.914],
-        ['net', 1, 'VCC']
-      ]
+        ['net', 1, 'VCC'],
+      ],
     ]);
   });
 });
@@ -138,8 +152,8 @@ describe('convertCopperArea', () => {
       ['connect_pads', ['clearance', 0.254]],
       [
         'polygon',
-        ['pts', ['xy', 12.7, 12.7], ['xy', 41.656, 12.7], ['xy', 40.64, 30.48], ['xy', 12.7, 25.4]]
-      ]
+        ['pts', ['xy', 12.7, 12.7], ['xy', 41.656, 12.7], ['xy', 40.64, 30.48], ['xy', 12.7, 25.4]],
+      ],
     ]);
   });
 });
@@ -173,9 +187,9 @@ describe('convertSolidRegion', () => {
           ['xy', 116.586, 45.593],
           ['xy', 116.586, 64.135],
           ['xy', 71.247, 64.262],
-          ['xy', 71.12, 43.942]
-        ]
-      ]
+          ['xy', 71.12, 43.942],
+        ],
+      ],
     ]);
   });
 
@@ -206,8 +220,8 @@ describe('convertHole()', () => {
         ['at', 0, 0],
         ['size', 1.5, 1.5],
         ['drill', 1.5],
-        ['layers', '*.Cu', '*.Mask']
-      ]
+        ['layers', '*.Cu', '*.Mask'],
+      ],
     ]);
   });
 });
@@ -220,7 +234,7 @@ describe('convert circle', () => {
       ['center', 0, 0],
       ['end', 3.15, 0],
       ['layer', 'F.SilkS'],
-      ['width', 0.254]
+      ['width', 0.254],
     ]);
   });
 });
@@ -240,8 +254,8 @@ describe('convertLib()', () => {
         'gge12',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
-        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
-      ]
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]],
+      ],
     ]);
   });
 
@@ -264,7 +278,7 @@ describe('convertLib()', () => {
         ['at', -40.259, 55.372, -90],
         ['size', 1.016, 1.016],
         ['layers', '*.Cu', '*.Paste', '*.Mask'],
-        ['drill', 0.762]
+        ['drill', 0.762],
       ],
       [
         'fp_text',
@@ -272,8 +286,8 @@ describe('convertLib()', () => {
         'gge12',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
-        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
-      ]
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]],
+      ],
     ]);
   });
 
@@ -295,7 +309,7 @@ describe('convertLib()', () => {
         ['at', -8.763, -34.29, 90],
         ['layer', 'F.Fab'],
         'hide',
-        ['effects', ['font', ['size', 1.143, 1.143], ['thickness', 0.152]], ['justify', 'left']]
+        ['effects', ['font', ['size', 1.143, 1.143], ['thickness', 0.152]], ['justify', 'left']],
       ],
       [
         'fp_text',
@@ -303,8 +317,8 @@ describe('convertLib()', () => {
         'gge12',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
-        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
-      ]
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]],
+      ],
     ]);
   });
 
@@ -324,7 +338,7 @@ describe('convertLib()', () => {
         'R2',
         ['at', -0.45, -0.937, 90],
         ['layer', 'F.SilkS'],
-        ['effects', ['font', ['size', 0.61, 0.61], ['thickness', 0.127]], ['justify', 'left']]
+        ['effects', ['font', ['size', 0.61, 0.61], ['thickness', 0.127]], ['justify', 'left']],
       ],
       [
         'fp_text',
@@ -333,7 +347,7 @@ describe('convertLib()', () => {
         ['at', 1.087, -4.318, 90],
         ['layer', 'F.Fab'],
         'hide',
-        ['effects', ['font', ['size', 1.143, 1.143], ['thickness', 0.127]], ['justify', 'left']]
+        ['effects', ['font', ['size', 1.143, 1.143], ['thickness', 0.127]], ['justify', 'left']],
       ],
       [
         'pad',
@@ -343,7 +357,7 @@ describe('convertLib()', () => {
         ['at', -0.424, 0, 90],
         ['size', 0.6, 0.65],
         ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
-        ['net', 2, 'SWCLK']
+        ['net', 2, 'SWCLK'],
       ],
       [
         'fp_text',
@@ -351,8 +365,8 @@ describe('convertLib()', () => {
         'gge464',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
-        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
-      ]
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]],
+      ],
     ]);
   });
 
@@ -379,10 +393,10 @@ describe('convertLib()', () => {
           ['xy', -0.305, 1.219],
           ['xy', -0.178, 1.321],
           ['xy', 0.076, 0.483],
-          ['xy', -0.864, 0.787]
+          ['xy', -0.864, 0.787],
         ],
         ['layer', 'F.SilkS'],
-        ['width', 0]
+        ['width', 0],
       ],
       [
         'fp_text',
@@ -390,8 +404,8 @@ describe('convertLib()', () => {
         'gge846',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
-        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
-      ]
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]],
+      ],
     ]);
   });
 
@@ -410,8 +424,8 @@ describe('convertLib()', () => {
         'gge846',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
-        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
-      ]
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]],
+      ],
     ]);
   });
 
@@ -430,8 +444,8 @@ describe('convertLib()', () => {
         'gge123',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
-        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
-      ]
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]],
+      ],
     ]);
   });
 
@@ -459,9 +473,9 @@ describe('convertLib()', () => {
           [
             'gr_poly',
             ['pts', ['xy', -0.399, -0.5], ['xy', 0.399, -0.5], ['xy', -0.399, 0.501]],
-            ['width', 0.1]
-          ]
-        ]
+            ['width', 0.1],
+          ],
+        ],
       ],
       [
         'fp_text',
@@ -469,8 +483,8 @@ describe('convertLib()', () => {
         'rep30',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
-        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
-      ]
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]],
+      ],
     ]);
   });
 
@@ -498,9 +512,9 @@ describe('convertLib()', () => {
           [
             'gr_poly',
             ['pts', ['xy', -0.399, -0.5], ['xy', 0.399, -0.5], ['xy', -0.399, 0.501]],
-            ['width', 0.1]
-          ]
-        ]
+            ['width', 0.1],
+          ],
+        ],
       ],
       [
         'fp_text',
@@ -508,8 +522,8 @@ describe('convertLib()', () => {
         'gge35720',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
-        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
-      ]
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]],
+      ],
     ]);
   });
 
@@ -531,7 +545,7 @@ describe('convertLib()', () => {
         ['at', 0, 2.093, 180],
         ['size', 0.798, 1.001],
         ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
-        ['net', 3, 'SYNC-OUT']
+        ['net', 3, 'SYNC-OUT'],
       ],
       [
         'pad',
@@ -541,7 +555,7 @@ describe('convertLib()', () => {
         ['at', 0, 0.193, 180],
         ['size', 0.8, 1.001],
         ['layers', 'F.Cu', 'F.Paste', 'F.Mask'],
-        ['net', 3, 'SYNC-OUT']
+        ['net', 3, 'SYNC-OUT'],
       ],
       [
         'fp_text',
@@ -549,8 +563,8 @@ describe('convertLib()', () => {
         'gge35720',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
-        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
-      ]
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]],
+      ],
     ]);
   });
 });

@@ -27,7 +27,7 @@ describe('spectra', () => {
         'gge464',
         ['at', 0, 0],
         ['layer', 'Cmts.User'],
-        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+        ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]],
       ]);
     });
 

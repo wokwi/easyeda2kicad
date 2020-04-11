@@ -18,7 +18,7 @@ function getLayerName(id: string) {
     12: 'Cmts.User',
     13: 'F.Fab',
     14: 'B.Fab',
-    15: 'Dwgs.User'
+    15: 'Dwgs.User',
   };
   if (id in layers) {
     return layers[id];
@@ -54,7 +54,7 @@ function rotate({ x, y }: ICoordinates, degrees: number) {
   const radians = (degrees / 180) * Math.PI;
   return {
     x: x * Math.cos(radians) - y * Math.sin(radians),
-    y: x * Math.sin(radians) + y * Math.cos(radians)
+    y: x * Math.sin(radians) + y * Math.cos(radians),
   };
 }
 
@@ -66,7 +66,7 @@ function kiCoords(
   return rotate(
     {
       x: kiUnits(parseFloat(x) - 4000) - transform.x,
-      y: kiUnits(parseFloat(y) - 3000) - transform.y
+      y: kiUnits(parseFloat(y) - 3000) - transform.y,
     },
     transform.angle || 0
   );
@@ -88,7 +88,7 @@ function kiStartEnd(
   const end = kiCoords(endX, endY, parentCoords);
   return [
     ['start', start.x, start.y],
-    ['end', end.x, end.y]
+    ['end', end.x, end.y],
   ];
 }
 
@@ -116,7 +116,7 @@ function convertVia(args: string[], nets: string[], parentCoords?: IParentTransf
     ['size', kiUnits(diameter)],
     ['drill', kiUnits(drill) * 2],
     ['layers', 'F.Cu', 'B.Cu'],
-    ['net', getNetId(nets, net)]
+    ['net', getNetId(nets, net)],
   ];
 }
 
@@ -137,7 +137,7 @@ function convertPadToVia(args: string[], nets: string[], parentCoords?: IParentT
     holeLength,
     holePoints,
     plated,
-    locked
+    locked,
   ] = args;
 
   const size = kiUnits(holeRadius);
@@ -154,7 +154,7 @@ function convertPadToVia(args: string[], nets: string[], parentCoords?: IParentT
       ['attr', 'virtual'],
       ['fp_text', 'reference', '', ['at', 0, 0], ['layer', 'F.SilkS']],
       ['fp_text', 'value', '', ['at', 0, 0], ['layer', 'F.SilkS']],
-      convertPad(args, nets, { ...kiCoords(x, y), angle: 0 })
+      convertPad(args, nets, { ...kiCoords(x, y), angle: 0 }),
     ];
   }
 
@@ -164,7 +164,7 @@ function convertPadToVia(args: string[], nets: string[], parentCoords?: IParentT
     ['size', kiUnits(holeRadius)],
     ['drill', kiUnits(drill) * 2],
     ['layers', 'F.Cu', 'B.Cu'],
-    ['net', getNetId(nets, net)]
+    ['net', getNetId(nets, net)],
   ];
 }
 
@@ -193,7 +193,7 @@ function convertTrack(
       ['width', kiUnits(width)],
       ['layer', layerName],
       isCopper(layerName) && netId > 0 ? ['net', netId] : null,
-      locked === '1' ? ['status', 40000] : null
+      locked === '1' ? ['status', 40000] : null,
     ]);
   }
   return result;
@@ -224,12 +224,12 @@ function convertText(args: string[], objName = 'gr_text', parentCoords?: IParent
     display,
     id,
     font,
-    locked
+    locked,
   ] = args;
   const layerName = textLayer(layer, objName === 'fp_text', type === 'N');
   const fontTable: { [key: string]: { width: number; thickness: number } } = {
     'NotoSerifCJKsc-Medium': { width: 0.8, thickness: 0.3 },
-    'NotoSansCJKjp-DemiLight': { width: 0.6, thickness: 0.5 }
+    'NotoSansCJKjp-DemiLight': { width: 0.6, thickness: 0.5 },
   };
   const fontMultiplier = font in fontTable ? fontTable[font] : { width: 1, thickness: 1 };
   const actualFontSize = kiUnits(fontSize) * fontMultiplier.width;
@@ -245,10 +245,10 @@ function convertText(args: string[], objName = 'gr_text', parentCoords?: IParent
       [
         'font',
         ['size', actualFontSize, actualFontSize],
-        ['thickness', kiUnits(lineWidth) * fontMultiplier.thickness]
+        ['thickness', kiUnits(lineWidth) * fontMultiplier.thickness],
       ],
-      ['justify', 'left', layerName[0] === 'B' ? 'mirror' : null]
-    ]
+      ['justify', 'left', layerName[0] === 'B' ? 'mirror' : null],
+    ],
   ];
 }
 
@@ -280,7 +280,7 @@ function convertArc(args: string[], objName = 'gr_arc', transform?: IParentTrans
     ['end', endPoint.x, endPoint.y],
     ['angle', Math.abs(extent)],
     ['width', kiUnits(width)],
-    ['layer', getLayerName(layer)]
+    ['layer', getLayerName(layer)],
   ];
 }
 
@@ -332,20 +332,20 @@ function convertPad(args: string[], nets: string[], transform: IParentTransform)
     holeLength,
     holePoints,
     plated,
-    locked
+    locked,
   ] = args;
 
   const padShapes: { [key: string]: string } = {
     ELLIPSE: 'circle',
     RECT: 'rect',
     OVAL: 'oval',
-    POLYGON: 'custom'
+    POLYGON: 'custom',
   };
   const centerCoords = kiCoords(x, y);
   const polygonTransform: IParentTransform = {
     x: centerCoords.x,
     y: centerCoords.y,
-    angle: parseFloat(rotation)
+    angle: parseFloat(rotation),
   };
   const pointList = points.split(' ').map(parseFloat);
   const pointsAreRectangle = padShapes[shape] === 'custom' && isRectangle(pointList);
@@ -360,7 +360,7 @@ function convertPad(args: string[], nets: string[], transform: IParentTransform)
   const layers: { [key: string]: string[] } = {
     1: ['F.Cu', 'F.Paste', 'F.Mask'],
     2: ['B.Cu', 'B.Paste', 'B.Mask'],
-    11: ['*.Cu', '*.Paste', '*.Mask']
+    11: ['*.Cu', '*.Paste', '*.Mask'],
   };
   const [actualWidth, actualHeight] = pointsAreRectangle
     ? rectangleSize(pointList, parseFloat(rotation))
@@ -382,10 +382,10 @@ function convertPad(args: string[], nets: string[], transform: IParentTransform)
           [
             'gr_poly',
             ['pts', ...pointListToPolygon(points.split(' '), polygonTransform)],
-            ['width', 0.1]
-          ]
+            ['width', 0.1],
+          ],
         ]
-      : null
+      : null,
   ];
 }
 
@@ -400,7 +400,7 @@ function convertLibHole(args: string[], transform: IParentTransform) {
     kiAt(x, y, null, transform),
     ['size', size, size],
     ['drill', size],
-    ['layers', '*.Cu', '*.Mask']
+    ['layers', '*.Cu', '*.Mask'],
   ];
 }
 
@@ -412,7 +412,7 @@ function convertCircle(args: string[], type = 'gr_circle', parentCoords?: IParen
     ['center', center.x, center.y],
     ['end', center.x + kiUnits(radius), center.y],
     ['layer', getLayerName(layer)],
-    ['width', kiUnits(strokeWidth)]
+    ['width', kiUnits(strokeWidth)],
   ];
 }
 
@@ -449,10 +449,7 @@ function convertPolygon(args: string[], parentCoords?: IParentTransform) {
 
 function convertLib(args: string[], nets: string[]) {
   const [x, y, attributes, rotation, importFlag, id, , , , locked] = args;
-  const shapeList = args
-    .join('~')
-    .split('#@$')
-    .slice(1);
+  const shapeList = args.join('~').split('#@$').slice(1);
   const attrList = attributes.split('`');
   const attrs: { [key: string]: string } = {};
   for (let i = 0; i < attrList.length; i += 2) {
@@ -486,7 +483,7 @@ function convertLib(args: string[], nets: string[]) {
     id,
     ['at', 0, 0],
     ['layer', 'Cmts.User'],
-    ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]]
+    ['effects', ['font', ['size', 1, 1], ['thickness', 0.15]]],
   ]);
 
   const modAttrs = [];
@@ -503,7 +500,7 @@ function convertLib(args: string[], nets: string[]) {
     ['layer', 'F.Cu'],
     kiAt(x, y, rotation),
     ...modAttrs,
-    ...shapes
+    ...shapes,
   ];
 }
 
@@ -519,7 +516,7 @@ function convertCopperArea(args: string[], nets: string[]) {
     thermal,
     keepIsland,
     copperZone,
-    locked
+    locked,
   ] = args;
   const netId = getNetId(nets, net);
   // fill style: solid/none
@@ -540,7 +537,7 @@ function convertCopperArea(args: string[], nets: string[]) {
     ['connect_pads', ['clearance', kiUnits(clearanceWidth)]],
     // TODO (min_thickness 0.254)
     // TODO (fill yes (arc_segments 32) (thermal_gap 0.508) (thermal_bridge_width 0.508))
-    ['polygon', ['pts', ...polygonPoints]]
+    ['polygon', ['pts', ...polygonPoints]],
   ];
 }
 
@@ -560,7 +557,7 @@ function convertSolidRegion(args: string[], nets: string[]) {
         ['hatch', 'edge', 0.508],
         ['layer', getLayerName(layerId)],
         ['keepout', ['tracks', 'allowed'], ['vias', 'allowed'], ['copperpour', 'not_allowed']],
-        ['polygon', ['pts', ...polygonPoints]]
+        ['polygon', ['pts', ...polygonPoints]],
       ];
 
     case 'solid':
@@ -570,7 +567,7 @@ function convertSolidRegion(args: string[], nets: string[]) {
         // ['net', netId],
         ['pts', ...polygonPoints],
         ['layer', getLayerName(layerId)],
-        ['width', 0]
+        ['width', 0],
       ];
 
     default:
@@ -599,8 +596,8 @@ function convertHole(args: string[]) {
       ['at', 0, 0],
       ['size', size, size],
       ['drill', size],
-      ['layers', '*.Cu', '*.Mask']
-    ]
+      ['layers', '*.Cu', '*.Mask'],
+    ],
   ];
 }
 

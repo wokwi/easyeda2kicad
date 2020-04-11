@@ -10,7 +10,7 @@ describe('convertShape', () => {
       'Wire Wire Line',
       '    7150 3300 8800 3300',
       'Wire Wire Line',
-      '    8800 3300 8800 2805'
+      '    8800 3300 8800 2805',
     ]);
   });
 

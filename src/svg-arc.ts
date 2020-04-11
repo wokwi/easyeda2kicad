@@ -127,6 +127,6 @@ export function computeArc(
     width: rx * 2.0,
     height: ry * 2.0,
     start: angleStart,
-    extent: angleExtent
+    extent: angleExtent,
   };
 }
