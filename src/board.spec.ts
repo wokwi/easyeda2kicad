@@ -56,6 +56,20 @@ describe('convertTrack', () => {
   });
 });
 
+describe('convertPadToVia', () => {
+  it('should correctly parse a PAD and convert it to a Via', () => {
+    const input = 'PAD~ELLIPSE~4150~3071.5~6~6~11~GND~1~1.8~~0~gge196~0~~Y~0~~~4150,3071.5';
+    expect(normalize(convertShape(input, [])[0])).toEqual([
+      'via',
+      ['at', 38.1, 18.161],
+      ['size', 1.524],
+      ['drill', 0.914],
+      ['layers', 'F.Cu', 'B.Cu'],
+      ['net', -1]
+    ]);
+  });
+});
+
 describe('convertArc', () => {
   it('should convert arcs', () => {
     const input = 'ARC~1~10~~M4050,3060 A10,10 0 0 1 4060,3050~~gge276~0';
