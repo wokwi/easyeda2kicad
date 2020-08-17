@@ -1,10 +1,15 @@
 import { IEasyEDABoard } from './easyeda-types';
-import { encodeObject } from './spectra';
+import { encodeObject, ISpectraList } from './spectra';
 import { computeArc } from './svg-arc';
 
 // doc: https://docs.easyeda.com/en/DocumentFormat/3-EasyEDA-PCB-File-Format/index.html#shapes
 
-function getLayerName(id: string) {
+interface IConversionState {
+  nets: string[];
+  innerLayers: number;
+}
+
+function getLayerName(id: string, conversionState: IConversionState) {
   const layers: { [key: string]: string } = {
     1: 'F.Cu',
     2: 'B.Cu',
@@ -22,6 +27,14 @@ function getLayerName(id: string) {
   };
   if (id in layers) {
     return layers[id];
+  }
+
+  // Inner layers: 21 -> In1.Cu
+  const intId = parseInt(id, 10);
+  if (intId >= 21 && intId <= 50) {
+    const innerLayerId = intId - 20;
+    conversionState.innerLayers = Math.max(conversionState.innerLayers, innerLayerId);
+    return `In${innerLayerId}.Cu`;
   }
   throw new Error(`Missing layer id: ${id}`);
 }
@@ -96,7 +109,7 @@ function isCopper(layerName: string) {
   return layerName.endsWith('.Cu');
 }
 
-function getNetId(nets: string[], netName: string) {
+function getNetId({ nets }: IConversionState, netName: string) {
   if (!netName) {
     return -1;
   }
@@ -108,7 +121,11 @@ function getNetId(nets: string[], netName: string) {
   return nets.length - 1;
 }
 
-function convertVia(args: string[], nets: string[], parentCoords?: IParentTransform) {
+function convertVia(
+  args: string[],
+  conversionState: IConversionState,
+  parentCoords?: IParentTransform
+) {
   const [x, y, diameter, net, drill, id, locked] = args;
   return [
     'via',
@@ -116,11 +133,15 @@ function convertVia(args: string[], nets: string[], parentCoords?: IParentTransf
     ['size', kiUnits(diameter)],
     ['drill', kiUnits(drill) * 2],
     ['layers', 'F.Cu', 'B.Cu'],
-    ['net', getNetId(nets, net)],
+    ['net', getNetId(conversionState, net)],
   ];
 }
 
-function convertPadToVia(args: string[], nets: string[], parentCoords?: IParentTransform) {
+function convertPadToVia(
+  args: string[],
+  conversionState: IConversionState,
+  parentCoords?: IParentTransform
+) {
   const [
     shape,
     x,
@@ -154,7 +175,7 @@ function convertPadToVia(args: string[], nets: string[], parentCoords?: IParentT
       ['attr', 'virtual'],
       ['fp_text', 'reference', '', ['at', 0, 0], ['layer', 'F.SilkS']],
       ['fp_text', 'value', '', ['at', 0, 0], ['layer', 'F.SilkS']],
-      convertPad(args, nets, { ...kiCoords(x, y), angle: 0 }),
+      convertPad(args, conversionState, { ...kiCoords(x, y), angle: 0 }),
     ];
   }
 
@@ -164,21 +185,21 @@ function convertPadToVia(args: string[], nets: string[], parentCoords?: IParentT
     ['size', kiUnits(holeRadius)],
     ['drill', kiUnits(drill) * 2],
     ['layers', 'F.Cu', 'B.Cu'],
-    ['net', getNetId(nets, net)],
+    ['net', getNetId(conversionState, net)],
   ];
 }
 
 function convertTrack(
   args: string[],
-  nets: string[],
+  conversionState: IConversionState,
   objName = 'segment',
   parentCoords?: IParentTransform
 ) {
   const [width, layer, net, coords, id, locked] = args;
-  const netId = getNetId(nets, net);
+  const netId = getNetId(conversionState, net);
   const coordList = coords.split(' ');
   const result = [];
-  const layerName = getLayerName(layer);
+  const layerName = getLayerName(layer, conversionState);
   const lineType = objName === 'segment' && !isCopper(layerName) ? 'gr_line' : objName;
   for (let i = 0; i < coordList.length - 2; i += 2) {
     result.push([
@@ -199,8 +220,13 @@ function convertTrack(
   return result;
 }
 
-function textLayer(layer: string, footprint: boolean, isName: boolean) {
-  const layerName = getLayerName(layer);
+function textLayer(
+  layer: string,
+  conversionState: IConversionState,
+  footprint: boolean,
+  isName: boolean
+) {
+  const layerName = getLayerName(layer, conversionState);
   if (footprint && isName) {
     return layerName.replace('.SilkS', '.Fab');
   } else {
@@ -208,7 +234,12 @@ function textLayer(layer: string, footprint: boolean, isName: boolean) {
   }
 }
 
-function convertText(args: string[], objName = 'gr_text', parentCoords?: IParentTransform) {
+function convertText(
+  args: string[],
+  conversionState: IConversionState,
+  objName = 'gr_text',
+  parentCoords?: IParentTransform
+) {
   const [
     type, // N/P/L (Name/Prefix/Label)
     x,
@@ -226,7 +257,7 @@ function convertText(args: string[], objName = 'gr_text', parentCoords?: IParent
     font,
     locked,
   ] = args;
-  const layerName = textLayer(layer, objName === 'fp_text', type === 'N');
+  const layerName = textLayer(layer, conversionState, objName === 'fp_text', type === 'N');
   const fontTable: { [key: string]: { width: number; thickness: number } } = {
     'NotoSerifCJKsc-Medium': { width: 0.8, thickness: 0.3 },
     'NotoSansCJKjp-DemiLight': { width: 0.6, thickness: 0.5 },
@@ -252,7 +283,12 @@ function convertText(args: string[], objName = 'gr_text', parentCoords?: IParent
   ];
 }
 
-function convertArc(args: string[], objName = 'gr_arc', transform?: IParentTransform) {
+function convertArc(
+  args: string[],
+  conversionState: IConversionState,
+  objName = 'gr_arc',
+  transform?: IParentTransform
+) {
   const [width, layer, net, path, _, id, locked] = args;
   const [match, startPoint, arcParams] = /^M\s*([-\d.\s]+)A\s*([-\d.\s]+)$/.exec(
     path.replace(/[,\s]+/g, ' ')
@@ -280,7 +316,7 @@ function convertArc(args: string[], objName = 'gr_arc', transform?: IParentTrans
     ['end', endPoint.x, endPoint.y],
     ['angle', Math.abs(extent)],
     ['width', kiUnits(width)],
-    ['layer', getLayerName(layer)],
+    ['layer', getLayerName(layer, conversionState)],
   ];
 }
 
@@ -315,7 +351,11 @@ function rectangleSize(points: number[], rotation: number) {
   return Math.round(Math.abs(rotation)) % 180 === 90 ? [height, width] : [width, height];
 }
 
-function convertPad(args: string[], nets: string[], transform: IParentTransform) {
+function convertPad(
+  args: string[],
+  conversionState: IConversionState,
+  transform: IParentTransform
+) {
   const [
     shape,
     x,
@@ -356,7 +396,7 @@ function convertPad(args: string[], nets: string[], transform: IParentTransform)
     return null;
   }
 
-  const netId = getNetId(nets, net);
+  const netId = getNetId(conversionState, net);
   const layers: { [key: string]: string[] } = {
     1: ['F.Cu', 'F.Paste', 'F.Mask'],
     2: ['B.Cu', 'B.Paste', 'B.Mask'],
@@ -404,14 +444,19 @@ function convertLibHole(args: string[], transform: IParentTransform) {
   ];
 }
 
-function convertCircle(args: string[], type = 'gr_circle', parentCoords?: IParentTransform) {
+function convertCircle(
+  args: string[],
+  conversionState: IConversionState,
+  type = 'gr_circle',
+  parentCoords?: IParentTransform
+) {
   const [x, y, radius, strokeWidth, layer, id, locked] = args;
   const center = kiCoords(x, y, parentCoords);
   return [
     type,
     ['center', center.x, center.y],
     ['end', center.x + kiUnits(radius), center.y],
-    ['layer', getLayerName(layer)],
+    ['layer', getLayerName(layer, conversionState)],
     ['width', kiUnits(strokeWidth)],
   ];
 }
@@ -434,7 +479,11 @@ function pathToPolygon(path: string, parentCoords?: IParentTransform) {
   return pointListToPolygon(points, parentCoords);
 }
 
-function convertPolygon(args: string[], parentCoords?: IParentTransform) {
+function convertPolygon(
+  args: string[],
+  conversionState: IConversionState,
+  parentCoords?: IParentTransform
+) {
   const [layerId, net, path, type, id, , , locked] = args;
   if (type !== 'solid') {
     console.warn(`Warning: unsupported SOLIDREGION type in footprint: ${type}`);
@@ -444,10 +493,15 @@ function convertPolygon(args: string[], parentCoords?: IParentTransform) {
   if (!polygonPoints) {
     return null;
   }
-  return ['fp_poly', ['pts', ...polygonPoints], ['layer', getLayerName(layerId)], ['width', 0]];
+  return [
+    'fp_poly',
+    ['pts', ...polygonPoints],
+    ['layer', getLayerName(layerId, conversionState)],
+    ['width', 0],
+  ];
 }
 
-function convertLib(args: string[], nets: string[]) {
+function convertLib(args: string[], conversionState: IConversionState) {
   const [x, y, attributes, rotation, importFlag, id, , , , locked] = args;
   const shapeList = args.join('~').split('#@$').slice(1);
   const attrList = attributes.split('`');
@@ -460,19 +514,19 @@ function convertLib(args: string[], nets: string[]) {
   for (const shape of shapeList) {
     const [type, ...shapeArgs] = shape.split('~');
     if (type === 'TRACK') {
-      shapes.push(...convertTrack(shapeArgs, nets, 'fp_line', transform));
+      shapes.push(...convertTrack(shapeArgs, conversionState, 'fp_line', transform));
     } else if (type === 'TEXT') {
-      shapes.push(convertText(shapeArgs, 'fp_text', transform));
+      shapes.push(convertText(shapeArgs, conversionState, 'fp_text', transform));
     } else if (type === 'ARC') {
-      shapes.push(convertArc(shapeArgs, 'fp_arc', transform));
+      shapes.push(convertArc(shapeArgs, conversionState, 'fp_arc', transform));
     } else if (type === 'HOLE') {
       shapes.push(convertLibHole(shapeArgs, transform));
     } else if (type === 'PAD') {
-      shapes.push(convertPad(shapeArgs, nets, transform));
+      shapes.push(convertPad(shapeArgs, conversionState, transform));
     } else if (type === 'CIRCLE') {
-      shapes.push(convertCircle(shapeArgs, 'fp_circle', transform));
+      shapes.push(convertCircle(shapeArgs, conversionState, 'fp_circle', transform));
     } else if (type === 'SOLIDREGION') {
-      shapes.push(convertPolygon(shapeArgs, transform));
+      shapes.push(convertPolygon(shapeArgs, conversionState, transform));
     } else {
       console.warn(`Warning: unsupported shape ${type} in footprint ${id}`);
     }
@@ -504,7 +558,7 @@ function convertLib(args: string[], nets: string[]) {
   ];
 }
 
-function convertCopperArea(args: string[], nets: string[]) {
+function convertCopperArea(args: string[], conversionState: IConversionState) {
   const [
     strokeWidth,
     layerId,
@@ -518,7 +572,7 @@ function convertCopperArea(args: string[], nets: string[]) {
     copperZone,
     locked,
   ] = args;
-  const netId = getNetId(nets, net);
+  const netId = getNetId(conversionState, net);
   // fill style: solid/none
   // id: gge27
   // thermal: spoke/direct
@@ -532,7 +586,7 @@ function convertCopperArea(args: string[], nets: string[]) {
     'zone',
     ['net', netId],
     ['net_name', net],
-    ['layer', getLayerName(layerId)],
+    ['layer', getLayerName(layerId, conversionState)],
     ['hatch', 'edge', 0.508],
     ['connect_pads', ['clearance', kiUnits(clearanceWidth)]],
     // TODO (min_thickness 0.254)
@@ -541,10 +595,10 @@ function convertCopperArea(args: string[], nets: string[]) {
   ];
 }
 
-function convertSolidRegion(args: string[], nets: string[]) {
+function convertSolidRegion(args: string[], conversionState: IConversionState) {
   const [layerId, net, path, type, id, locked] = args;
   const polygonPoints = pathToPolygon(path);
-  const netId = getNetId(nets, net);
+  const netId = getNetId(conversionState, net);
   if (!polygonPoints) {
     return null;
   }
@@ -555,7 +609,7 @@ function convertSolidRegion(args: string[], nets: string[]) {
         ['net', netId],
         ['net_name', ''],
         ['hatch', 'edge', 0.508],
-        ['layer', getLayerName(layerId)],
+        ['layer', getLayerName(layerId, conversionState)],
         ['keepout', ['tracks', 'allowed'], ['vias', 'allowed'], ['copperpour', 'not_allowed']],
         ['polygon', ['pts', ...polygonPoints]],
       ];
@@ -566,7 +620,7 @@ function convertSolidRegion(args: string[], nets: string[]) {
         // Unfortunately, KiCad does not support net for gr_poly
         // ['net', netId],
         ['pts', ...polygonPoints],
-        ['layer', getLayerName(layerId)],
+        ['layer', getLayerName(layerId, conversionState)],
         ['width', 0],
       ];
 
@@ -601,29 +655,29 @@ function convertHole(args: string[]) {
   ];
 }
 
-export function convertShape(shape: string, nets: string[]) {
+export function convertShape(shape: string, conversionState: IConversionState) {
   const [type, ...args] = shape.split('~');
   switch (type) {
     case 'VIA':
-      return [convertVia(args, nets)];
+      return [convertVia(args, conversionState)];
     case 'TRACK':
-      return convertTrack(args, nets);
+      return convertTrack(args, conversionState);
     case 'TEXT':
-      return [convertText(args)];
+      return [convertText(args, conversionState)];
     case 'ARC':
-      return [convertArc(args)];
+      return [convertArc(args, conversionState)];
     case 'COPPERAREA':
-      return [convertCopperArea(args, nets)];
+      return [convertCopperArea(args, conversionState)];
     case 'SOLIDREGION':
-      return [convertSolidRegion(args, nets)];
+      return [convertSolidRegion(args, conversionState)];
     case 'CIRCLE':
-      return [convertCircle(args)];
+      return [convertCircle(args, conversionState)];
     case 'HOLE':
       return [convertHole(args)];
     case 'LIB':
-      return [convertLib(args, nets)];
+      return [convertLib(args, conversionState)];
     case 'PAD':
-      return [convertPadToVia(args, nets)];
+      return [convertPadToVia(args, conversionState)];
     default:
       console.warn(`Warning: unsupported shape ${type}`);
       return null;
@@ -634,43 +688,54 @@ function flatten<T>(arr: T[]) {
   return [].concat(...arr);
 }
 
-export function convertBoard(input: IEasyEDABoard) {
+export function convertBoardToArray(input: IEasyEDABoard): ISpectraList {
   const { nets } = input.routerRule || { nets: [] as string[] };
+  const conversionState = { nets, innerLayers: 0 };
   nets.unshift(''); // Kicad expects net 0 to be empty
-  const shapes = flatten(input.shape.map((shape) => convertShape(shape, nets)));
+  const shapes = flatten(input.shape.map((shape) => convertShape(shape, conversionState)));
   const outputObjs = [...nets.map((net, idx) => ['net', idx, net]), ...shapes].filter(
     (obj) => obj != null
   );
 
-  const output = `
-(kicad_pcb (version 20171130) (host pcbnew "(5.0.2)-1")
+  const innerLayers = [];
+  for (let i = 1; i <= conversionState.innerLayers; i++) {
+    innerLayers.push([i, `In${i}.Cu`, 'signal']);
+  }
 
-(page A4)
-(layers
-  (0 F.Cu signal)
-  (31 B.Cu signal)
-  (32 B.Adhes user)
-  (33 F.Adhes user)
-  (34 B.Paste user)
-  (35 F.Paste user)
-  (36 B.SilkS user)
-  (37 F.SilkS user)
-  (38 B.Mask user)
-  (39 F.Mask user)
-  (40 Dwgs.User user)
-  (41 Cmts.User user)
-  (42 Eco1.User user)
-  (43 Eco2.User user)
-  (44 Edge.Cuts user)
-  (45 Margin user)
-  (46 B.CrtYd user)
-  (47 F.CrtYd user)
-  (48 B.Fab user hide)
-  (49 F.Fab user hide)
-)
+  const layers = [
+    [0, 'F.Cu', 'signal'],
+    ...innerLayers,
+    [31, 'B.Cu', 'signal'],
+    [32, 'B.Adhes', 'user'],
+    [33, 'F.Adhes', 'user'],
+    [34, 'B.Paste', 'user'],
+    [35, 'F.Paste', 'user'],
+    [36, 'B.SilkS', 'user'],
+    [37, 'F.SilkS', 'user'],
+    [38, 'B.Mask', 'user'],
+    [39, 'F.Mask', 'user'],
+    [40, 'Dwgs.User', 'user'],
+    [41, 'Cmts.User', 'user'],
+    [42, 'Eco1.User', 'user'],
+    [43, 'Eco2.User', 'user'],
+    [44, 'Edge.Cuts', 'user'],
+    [45, 'Margin', 'user'],
+    [46, 'B.CrtYd', 'user'],
+    [47, 'F.CrtYd', 'user'],
+    [48, 'B.Fab', 'user', 'hide'],
+    [49, 'F.Fab', 'user', 'hide'],
+  ];
 
-${outputObjs.map(encodeObject).join('\n')}
-)
-`;
-  return output;
+  return [
+    'kicad_pcb',
+    ['version', 20171130],
+    ['host', 'pcbnew', '(5.1.5)-3'],
+    ['page', 'A4'],
+    ['layers', ...layers],
+    ...outputObjs,
+  ];
+}
+
+export function convertBoard(board: IEasyEDABoard) {
+  return encodeObject(convertBoardToArray(board));
 }

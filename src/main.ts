@@ -3,6 +3,7 @@
 import * as fs from 'fs';
 import { convertBoard } from './board';
 import { convertSchematic } from './schematic';
+import { encodeObject } from './spectra';
 
 if (process.argv.length < 3) {
   console.error(`Usage: ${process.argv[1]} <input.json> [output.kicad_pcb]`);

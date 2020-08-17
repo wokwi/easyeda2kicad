@@ -1,1 +1,2 @@
-export { convertBoard } from './board';
+export { convertSchematic } from './schematic';
+export { convertBoard, convertBoardToArray } from './board';

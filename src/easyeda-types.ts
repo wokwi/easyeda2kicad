@@ -16,13 +16,13 @@ export interface IEasyEDABoard {
   head: Head;
   canvas: string;
   shape: string[];
-  systemColor: string;
+  systemColor?: string;
   layers: string[];
   objects: string[];
   BBox: BBox;
   preference: Preference;
   DRCRULE: Drcrule;
-  routerRule: RouterRule;
+  routerRule?: RouterRule;
   netColors: {};
 }
 
