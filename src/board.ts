@@ -20,6 +20,7 @@ function getLayerName(id: string, conversionState: IConversionState) {
     7: 'F.Mask',
     8: 'B.Mask',
     10: 'Edge.Cuts',
+    11: 'Edge.Cuts',
     12: 'Cmts.User',
     13: 'F.Fab',
     14: 'B.Fab',
