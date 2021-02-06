@@ -9,7 +9,7 @@ function kiUnits(value: string | number) {
 }
 
 function flatten<T>(arr: T[]) {
-  return [].concat(...arr);
+  return ([] as T[]).concat(...arr);
 }
 
 function convertNoConnect(args: string[]) {

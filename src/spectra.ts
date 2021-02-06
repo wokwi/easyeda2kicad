@@ -2,6 +2,10 @@ export interface ISpectraList extends Array<ISpectraList | string | number | nul
 
 const WHITESPACE = [' ', '\t', '\r', '\n'];
 
+function notNull<TValue>(value: TValue | null): value is TValue {
+  return value !== null;
+}
+
 export function encodeString(str: string) {
   if (/^[a-z][a-z0-9_]+$/.test(str)) {
     return str;
@@ -24,15 +28,9 @@ export function encodeValue(value: ISpectraList | string | number) {
 }
 
 export function encodeObject(object: ISpectraList): string {
-  return (
-    '(' +
-    object
-      .filter((it) => it !== null)
-      .map(encodeValue)
-      .join(' ') +
-    ')'
-  );
+  return '(' + object.filter(notNull).map(encodeValue).join(' ') + ')';
 }
+
 function parseElement(input: string): [ISpectraList | string | number, number] {
   let idx = 0;
   while (WHITESPACE.includes(input[idx])) {

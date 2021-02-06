@@ -1,5 +1,9 @@
 {
   "extends": "./tsconfig.json",
   "exclude": [],
-  "compilerOptions": { "resolveJsonModule": true }
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "strictNullChecks": false,
+    "noEmitOnError": false
+  }
 }

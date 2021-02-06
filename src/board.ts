@@ -46,7 +46,7 @@ interface ICoordinates {
 }
 
 interface IParentTransform extends ICoordinates {
-  angle: number;
+  angle: number | null;
 }
 
 function kiUnits(value: string | number) {
@@ -56,10 +56,12 @@ function kiUnits(value: string | number) {
   return value * 10 * 0.0254;
 }
 
-function kiAngle(value: string, parentAngle?: number) {
-  const angle = parseFloat(value) + (parentAngle || 0);
-  if (!isNaN(angle)) {
-    return angle > 180 ? -(360 - angle) : angle;
+function kiAngle(value?: string, parentAngle?: number) {
+  if (value) {
+    const angle = parseFloat(value) + (parentAngle || 0);
+    if (!isNaN(angle)) {
+      return angle > 180 ? -(360 - angle) : angle;
+    }
   }
   return null;
 }
@@ -130,7 +132,7 @@ function convertVia(
   const [x, y, diameter, net, drill, id, locked] = args;
   return [
     'via',
-    kiAt(x, y, null, parentCoords),
+    kiAt(x, y, undefined, parentCoords),
     ['size', kiUnits(diameter)],
     ['drill', kiUnits(drill) * 2],
     ['layers', 'F.Cu', 'B.Cu'],
@@ -164,7 +166,6 @@ function convertPadToVia(
 
   const size = kiUnits(holeRadius);
   const drillHoleLength = holeLength === '0' ? null : kiUnits(holeLength);
-  const slotted = drillHoleLength > 0 ? 'oval' : null;
 
   if (shape !== 'ELLIPSE') {
     return [
@@ -182,7 +183,7 @@ function convertPadToVia(
 
   return [
     'via',
-    kiAt(x, y, null, parentCoords),
+    kiAt(x, y, undefined, parentCoords),
     ['size', kiUnits(holeRadius)],
     ['drill', kiUnits(drill) * 2],
     ['layers', 'F.Cu', 'B.Cu'],
@@ -291,9 +292,13 @@ function convertArc(
   transform?: IParentTransform
 ) {
   const [width, layer, net, path, _, id, locked] = args;
-  const [match, startPoint, arcParams] = /^M\s*([-\d.\s]+)A\s*([-\d.\s]+)$/.exec(
-    path.replace(/[,\s]+/g, ' ')
-  );
+  const pathMatch = /^M\s*([-\d.\s]+)A\s*([-\d.\s]+)$/.exec(path.replace(/[,\s]+/g, ' '));
+  if (!pathMatch) {
+    console.warn(`Invalid arc path: ${path}`);
+    return null;
+  }
+
+  const [match, startPoint, arcParams] = pathMatch;
   const [startX, startY] = startPoint.split(' ');
   const [svgRx, svgRy, xAxisRotation, largeArc, sweep, endX, endY] = arcParams.split(' ');
   const start = kiCoords(startX, startY, transform);
@@ -438,7 +443,7 @@ function convertLibHole(args: string[], transform: IParentTransform) {
     '',
     'np_thru_hole',
     'circle',
-    kiAt(x, y, null, transform),
+    kiAt(x, y, undefined, transform),
     ['size', size, size],
     ['drill', size],
     ['layers', '*.Cu', '*.Mask'],
@@ -687,7 +692,7 @@ export function convertShape(shape: string, conversionState: IConversionState) {
 }
 
 function flatten<T>(arr: T[]) {
-  return [].concat(...arr);
+  return ([] as T[]).concat(...arr);
 }
 
 export function convertBoardToArray(input: IEasyEDABoard): ISpectraList {
