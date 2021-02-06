@@ -1,6 +1,6 @@
 {
   "name": "easyeda2kicad",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "bin": "dist/main.js",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
