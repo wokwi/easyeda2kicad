@@ -37,6 +37,12 @@ function getLayerName(id: string, conversionState: IConversionState) {
     conversionState.innerLayers = Math.max(conversionState.innerLayers, innerLayerId);
     return `In${innerLayerId}.Cu`;
   }
+
+  if (intId >= 99 && intId < 200) {
+    console.warn(`Warning: unsupported layer id: ${intId}`);
+    return null;
+  }
+
   throw new Error(`Missing layer id: ${id}`);
 }
 
@@ -202,6 +208,10 @@ function convertTrack(
   const coordList = coords.split(' ');
   const result = [];
   const layerName = getLayerName(layer, conversionState);
+  if (!layerName) {
+    return [];
+  }
+
   const lineType = objName === 'segment' && !isCopper(layerName) ? 'gr_line' : objName;
   for (let i = 0; i < coordList.length - 2; i += 2) {
     result.push([
@@ -229,7 +239,7 @@ function textLayer(
   isName: boolean
 ) {
   const layerName = getLayerName(layer, conversionState);
-  if (footprint && isName) {
+  if (layerName && footprint && isName) {
     return layerName.replace('.SilkS', '.Fab');
   } else {
     return layerName;
@@ -260,6 +270,10 @@ function convertText(
     locked,
   ] = args;
   const layerName = textLayer(layer, conversionState, objName === 'fp_text', type === 'N');
+  if (!layerName) {
+    return null;
+  }
+
   const fontTable: { [key: string]: { width: number; thickness: number } } = {
     'NotoSerifCJKsc-Medium': { width: 0.8, thickness: 0.3 },
     'NotoSansCJKjp-DemiLight': { width: 0.6, thickness: 0.5 },
@@ -292,12 +306,15 @@ function convertArc(
   transform?: IParentTransform
 ) {
   const [width, layer, net, path, _, id, locked] = args;
+  const layerName = getLayerName(layer, conversionState);
+  if (!layerName) {
+    return null;
+  }
   const pathMatch = /^M\s*([-\d.\s]+)A\s*([-\d.\s]+)$/.exec(path.replace(/[,\s]+/g, ' '));
   if (!pathMatch) {
     console.warn(`Invalid arc path: ${path}`);
     return null;
   }
-
   const [match, startPoint, arcParams] = pathMatch;
   const [startX, startY] = startPoint.split(' ');
   const [svgRx, svgRy, xAxisRotation, largeArc, sweep, endX, endY] = arcParams.split(' ');
@@ -322,7 +339,7 @@ function convertArc(
     ['end', endPoint.x, endPoint.y],
     ['angle', Math.abs(extent)],
     ['width', kiUnits(width)],
-    ['layer', getLayerName(layer, conversionState)],
+    ['layer', layerName],
   ];
 }
 
@@ -457,12 +474,16 @@ function convertCircle(
   parentCoords?: IParentTransform
 ) {
   const [x, y, radius, strokeWidth, layer, id, locked] = args;
+  const layerName = getLayerName(layer, conversionState);
+  if (!layerName) {
+    return null;
+  }
   const center = kiCoords(x, y, parentCoords);
   return [
     type,
     ['center', center.x, center.y],
     ['end', center.x + kiUnits(radius), center.y],
-    ['layer', getLayerName(layer, conversionState)],
+    ['layer', layerName],
     ['width', kiUnits(strokeWidth)],
   ];
 }
@@ -495,16 +516,15 @@ function convertPolygon(
     console.warn(`Warning: unsupported SOLIDREGION type in footprint: ${type}`);
     return null;
   }
+  const layerName = getLayerName(layerId, conversionState);
+  if (!layerName) {
+    return null;
+  }
   const polygonPoints = pathToPolygon(path, parentCoords);
   if (!polygonPoints) {
     return null;
   }
-  return [
-    'fp_poly',
-    ['pts', ...polygonPoints],
-    ['layer', getLayerName(layerId, conversionState)],
-    ['width', 0],
-  ];
+  return ['fp_poly', ['pts', ...polygonPoints], ['layer', layerName], ['width', 0]];
 }
 
 function convertLib(args: string[], conversionState: IConversionState) {
@@ -579,6 +599,10 @@ function convertCopperArea(args: string[], conversionState: IConversionState) {
     locked,
   ] = args;
   const netId = getNetId(conversionState, net);
+  const layerName = getLayerName(layerId, conversionState);
+  if (!layerName) {
+    return null;
+  }
   // fill style: solid/none
   // id: gge27
   // thermal: spoke/direct
@@ -592,7 +616,7 @@ function convertCopperArea(args: string[], conversionState: IConversionState) {
     'zone',
     ['net', netId],
     ['net_name', net],
-    ['layer', getLayerName(layerId, conversionState)],
+    ['layer', layerName],
     ['hatch', 'edge', 0.508],
     ['connect_pads', ['clearance', kiUnits(clearanceWidth)]],
     // TODO (min_thickness 0.254)
@@ -603,6 +627,10 @@ function convertCopperArea(args: string[], conversionState: IConversionState) {
 
 function convertSolidRegion(args: string[], conversionState: IConversionState) {
   const [layerId, net, path, type, id, locked] = args;
+  const layerName = getLayerName(layerId, conversionState);
+  if (!layerName) {
+    return null;
+  }
   const polygonPoints = pathToPolygon(path);
   const netId = getNetId(conversionState, net);
   if (!polygonPoints) {
@@ -615,7 +643,7 @@ function convertSolidRegion(args: string[], conversionState: IConversionState) {
         ['net', netId],
         ['net_name', ''],
         ['hatch', 'edge', 0.508],
-        ['layer', getLayerName(layerId, conversionState)],
+        ['layer', layerName],
         ['keepout', ['tracks', 'allowed'], ['vias', 'allowed'], ['copperpour', 'not_allowed']],
         ['polygon', ['pts', ...polygonPoints]],
       ];
@@ -627,7 +655,7 @@ function convertSolidRegion(args: string[], conversionState: IConversionState) {
         // Unfortunately, KiCad does not support net for gr_poly
         // ['net', netId],
         ['pts', ...polygonPoints],
-        ['layer', getLayerName(layerId, conversionState)],
+        ['layer', layerName],
         ['width', 0],
       ];
 

@@ -50,11 +50,9 @@ describe('convertTrack', () => {
     expect(fn).toThrow('Missing layer id: 999');
   });
 
-  it('should convert non-copper layer tracks into gr_lines', () => {
-    const input = 'TRACK~0.63~10~GND~4000 3000 4000 3030~gge606~0';
-    expect(normalize(convertShape(input, conversionState()))).toEqual([
-      ['gr_line', ['start', 0, 0], ['end', 0, 7.62], ['width', 0.16], ['layer', 'Edge.Cuts']],
-    ]);
+  it('should ignore special EasyEDA layers (issues #44, #51) ', () => {
+    const input = 'TRACK~0.63~99~GND~4000 3000 4000 3030~gge606~0';
+    expect(normalize(convertShape(input, conversionState()))).toEqual([]);
   });
 
   it('should add missing nets into the netlist (issue #29)', () => {
@@ -214,6 +212,12 @@ describe('convertSolidRegion', () => {
   it('should ignore solid regions with circles (issue #12)', () => {
     const input =
       'SOLIDREGION~1~~M 4367 3248 A 33.8 33.8 0 1 0 4366.99 3248 Z ~cutout~gge1953~~~~0';
+    expect(normalize(convertShape(input, conversionState()))).toEqual([]);
+  });
+
+  it('should ignore solid regions on layer 100 (issue #50)', () => {
+    const input =
+      'SOLIDREGION~100~~M 4367 3248 A 33.8 33.8 0 1 0 4366.99 3248 Z ~cutout~gge1953~~~~0';
     expect(normalize(convertShape(input, conversionState()))).toEqual([]);
   });
 });
