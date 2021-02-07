@@ -77,3 +77,80 @@ export interface RouterRule {
   skipNets: any[];
   realtime: boolean;
 }
+
+export interface IEasyEDAFootprint {
+  head: FootprintHead;
+  canvas?: string;
+  shape: string[];
+  layers?: string[];
+  objects?: string[];
+  BBox?: BBox;
+  netcolors?: {};
+}
+
+export interface FootprintHead {
+  docType: string;
+  editorVersion?: string;
+  x: string;
+  y: string;
+  c_para: {
+    pre: string;
+    package: string;
+    link: string;
+    Contributor: string;
+    ['3DModel']: string;
+    [key: string]: string;
+  };
+  uuid?: string;
+  utime?: number;
+  importFlag?: string;
+  transformlist?: any;
+  hasIdFlag?: boolean;
+  newgId?: boolean;
+}
+
+export interface IEasyEDASchematicCollectionV6 {
+  editorVersion: string;
+  docType: string;
+  title: string;
+  description: string;
+  colors: {};
+  schematics: Array<{
+    docType: string;
+    title: string;
+    description: string;
+    dataStr: IEasyEDASchematic;
+  }>;
+}
+
+export interface IEasyEDALibrary {
+  head: LibraryHead;
+  canvas?: string;
+  shape: string[];
+  BBox?: BBox;
+  colors?: {};
+}
+
+export interface LibraryHead {
+  docType: string;
+  editorVersion: string;
+  x: number;
+  y: number;
+  c_para: {
+    pre: string;
+    name: string;
+    package: string;
+    BOM_Supplier: string;
+    ['BOM_Supplier Part']: string;
+    BOM_Manufacturer: string;
+    ['BOM_Manufacturer Part']: string;
+    Contributor: string;
+    [key: string]: string;
+  };
+  uuid?: string;
+  puuid?: string;
+  importFlag?: number;
+  c_spiceCmd?: any;
+  hasIdFlag?: boolean;
+  utime?: number;
+}
