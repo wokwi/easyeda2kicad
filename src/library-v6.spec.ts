@@ -1,6 +1,8 @@
 import * as fixtureJSON from './fixtures/testingLibrary-v6.json';
 import { IProperties, convertLibrary, convertPin, convertText } from './library-v6';
-import { encodeObject, ISpectraList } from './spectra';
+import { IConversionState } from './schematic-v6';
+
+import { ISpectraList } from './spectra';
 
 function removeNullsAndFormating(a: ISpectraList): ISpectraList {
   return a
@@ -35,19 +37,32 @@ const compProp: IProperties = {
   ref: '',
   value: '',
   pre: '',
-  component: [],
+  lib: '',
+  rotation: 0,
+  package: '',
   pinNameShowCount: 0,
   pinNameHideCount: 0,
   pinNumberShowCount: 0,
   pinNumberHideCount: 0,
+  component: [],
+};
+const conversionState: IConversionState = {
+  schRepCnt: 0,
+  schReports: [],
+  schReportsPosition: 0,
+  libTypes: {},
+  savedLibs: [],
+  savedLibMsgs: [],
+  convertingSymFile: true,
 };
 const transform = { x: 400, y: 300 };
+const CRCTable: number[] = [];
 
 function convertShape(shape: string) {
   const [type, ...args] = shape.split('~');
   switch (type) {
     case 'P':
-      return convertPin(args, transform, compProp);
+      return convertPin(args, transform, compProp, conversionState);
     case 'T':
       return convertText(args, transform);
     default:
@@ -75,7 +90,7 @@ describe('convertShape as standin for conversions from function convertLibrary',
 
 describe('convertLibrary full test', () => {
   it('should convert an EasyEDA library file to a Kicad symbol file', () => {
-    const schRes = convertLibrary(null, fixtureJSON);
+    const schRes = convertLibrary(null, fixtureJSON, conversionState, CRCTable);
     expect(schRes).toMatchSnapshot();
   });
 });

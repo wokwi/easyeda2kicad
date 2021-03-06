@@ -1,23 +1,49 @@
-// Doc: https://docs.easyeda.com/en/DocumentFormat/2-EasyEDA-Schematic-File-Format/index.html
 import { IEasyEDASchematic, IEasyEDASchematicCollectionV6 } from './easyeda-types';
-import { encodeObject } from './spectra';
+import { encodeObject, ISpectraList } from './spectra';
 import { v4 as uuid } from 'uuid';
 import { convertLibrary } from './library-v6';
+
+// Doc: https://docs.easyeda.com/en/DocumentFormat/2-EasyEDA-Schematic-File-Format/index.html
 
 interface ICoordinates {
   x: number;
   y: number;
+  isSymbolFile?: boolean;
 }
 
 interface INetflags {
-  $GND: boolean;
   $GND1: boolean;
   $GND2: boolean;
+  $GND3: boolean;
+  $EARTH: boolean;
   $Vplus: boolean;
   $Vminus: boolean;
 }
 
-export function kiUnits(value: string | number) {
+export interface IConversionState {
+  libTypes: { [key: number]: string };
+  savedLibs: ISpectraList;
+  savedLibMsgs: string[];
+  schRepCnt: number;
+  schReports: ISpectraList;
+  schReportsPosition: number;
+  convertingSymFile?: boolean;
+}
+
+function makeCRCTable(): number[] {
+  let c;
+  let crcTable = [];
+  for (let n = 0; n < 256; n++) {
+    c = n;
+    for (let k = 0; k < 8; k++) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    crcTable[n] = c;
+  }
+  return crcTable;
+}
+
+export function kiUnits(value: string | number): number {
   if (typeof value === 'string') {
     value = parseFloat(value);
   }
@@ -31,11 +57,11 @@ export function kiUnits(value: string | number) {
   return value * 0.254;
 }
 
-function kiAngle(value: string) {
+function kiAngle(value: string): number | null {
   if (value == null) {
     return null;
   }
-  var angle = parseFloat(value);
+  let angle = parseFloat(value);
   angle = angle + 180;
   if (!isNaN(angle)) {
     return angle < 360 ? angle : angle - 360;
@@ -50,7 +76,7 @@ function kiCoords(x: string, y: string): ICoordinates {
   };
 }
 
-function kiAt(x: string, y: string, angle?: string) {
+function kiAt(x: string, y: string, angle?: string): ISpectraList {
   const coords = kiCoords(x, y);
   if (angle != undefined) {
     return ['at', kiUnits(coords.x), kiUnits(coords.y), kiAngle(angle)];
@@ -59,7 +85,7 @@ function kiAt(x: string, y: string, angle?: string) {
   }
 }
 
-function kiLineStyle(style: string) {
+function kiLineStyle(style: string): string {
   // kicad default = solid
   const styleTable: { [key: string]: string } = {
     0: 'solid',
@@ -70,9 +96,9 @@ function kiLineStyle(style: string) {
   return styleTable[style];
 }
 
-function kiLineWidth(widthStr: string) {
+function kiLineWidth(widthStr: string): number {
   // Kicad default = 0 gives width of 0.152mm
-  var width = parseInt(widthStr);
+  let width = parseInt(widthStr);
   if (width > 1) {
     return width * 0.152;
   } else {
@@ -86,15 +112,15 @@ function kiEffects(
   justify: string = '',
   bold: string = '',
   italic: string = ''
-) {
+): ISpectraList {
   // Fonts: kicad default = 1.27 mm; Eda between 5 - 7pt
   // note: library items are converted to 1.27 mm as standard.
   // to keep aligned with the libs all font sizes upto 7pt
   // are kept at 1.27mm; above 7pt the size will be scaled
   // note: Jan 2021 - thickness is not (yet?) supported by
   // Kicad gui. By editing, text item will loose this property.
-  var size: number;
-  var thickness = 0;
+  let size: number;
+  let thickness = 0;
   fontSize === '' ? (fontSize = '1.27') : fontSize;
   let font = parseFloat(fontSize.replace('pt', ''));
   if (isNaN(font)) {
@@ -121,11 +147,7 @@ function kiEffects(
   ];
 }
 
-function rgbToHex(r: number, g: number, b: number) {
-  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-}
-
-function kiColor(hex: string) {
+function kiColor(hex: string): ISpectraList {
   // color support for selected Kicad items
   // note: not all Eda color support can be enabled in Kicad
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -139,7 +161,45 @@ function kiColor(hex: string) {
   }
 }
 
-function nfToPolygon(points: string[]) {
+function reportLibError(msgNumber: number, msg: string, position: number): ISpectraList {
+  // put error info near module 0,0 coords;
+  const y = -position * 2;
+  const text = `#${msgNumber}: ${msg}`;
+  return ['_LF3_', ['text', text, ['at', 0, y, 0], ['effects', ['font', ['size', 1.27, 1.27]]]]];
+}
+
+function reportSchError(msgNumber: number, msg: string, position: number): ISpectraList {
+  // put error info on pcb just outside frame
+  const y = 4 + position * 4;
+  const text = `#${msgNumber}: ${msg}`;
+  return [
+    '_LF_',
+    ['text', text, ['at', -200, y, 0], ['effects', ['font', ['size', 2, 2]], ['justify', 'left']]],
+  ];
+}
+
+export function reportError(
+  msgSch: string,
+  conversionState: IConversionState,
+  multiLine?: number
+): ISpectraList {
+  conversionState.schRepCnt += 1;
+  multiLine !== undefined
+    ? (conversionState.schReportsPosition += multiLine)
+    : (conversionState.schReportsPosition += 1);
+  if (conversionState.convertingSymFile) {
+    //console.info(`SYM: ${conversionState.schRepCnt} - ${msgSch}`);
+    return reportLibError(conversionState.schRepCnt, msgSch, conversionState.schReportsPosition);
+  } else {
+    //console.info(`SCH: ${conversionState.schRepCnt} - ${msgSch}`);
+    conversionState.schReports.push(
+      reportSchError(conversionState.schRepCnt, msgSch, conversionState.schReportsPosition)
+    );
+    return [];
+  }
+}
+
+function nfToPolygon(points: string[]): ISpectraList {
   // special function for netflag support
   const polygonPoints = [];
   for (let i = 0; i < points.length; i += 2) {
@@ -148,7 +208,7 @@ function nfToPolygon(points: string[]) {
   return polygonPoints;
 }
 
-function kiPts(startX: string, startY: string, endX: string, endY: string) {
+function kiPts(startX: string, startY: string, endX: string, endY: string): ISpectraList {
   const start = kiCoords(startX, startY);
   const end = kiCoords(endX, endY);
   return [
@@ -158,7 +218,7 @@ function kiPts(startX: string, startY: string, endX: string, endY: string) {
   ];
 }
 
-export function pointListToPolygon(points: string[], closed: boolean = false) {
+export function pointListToPolygon(points: string[], closed: boolean = false): ISpectraList {
   const polygonPoints = [];
   for (let i = 0; i < points.length; i += 2) {
     const coords = kiCoords(points[i], points[i + 1]);
@@ -171,8 +231,8 @@ export function pointListToPolygon(points: string[], closed: boolean = false) {
   return polygonPoints;
 }
 
-export function convertPolyline(args: string[]) {
-  const [points, strokeColor, strokeWidth, stokeStyle, fillColor, id, locked] = args;
+export function convertPolyline(args: string[]): ISpectraList {
+  const [points, strokeColor, strokeWidth, strokeStyle, fillColor, id, locked] = args;
   return [
     '_LF_',
     [
@@ -181,14 +241,57 @@ export function convertPolyline(args: string[]) {
       [
         'stroke',
         ['width', kiLineWidth(strokeWidth)],
-        ['type', kiLineStyle(stokeStyle)],
+        ['type', kiLineStyle(strokeStyle)],
         kiColor(strokeColor),
       ],
     ],
   ];
 }
 
-export function convertText(args: string[]) {
+function convertRect(args: string[]): ISpectraList {
+  const [
+    rx,
+    ry,
+    u1,
+    u2,
+    width,
+    height,
+    strokeColor,
+    strokeWidth,
+    strokeStyle,
+    fillColor,
+    id,
+    locked,
+  ] = args;
+  const lines = [];
+  const x = parseInt(rx);
+  const y = parseInt(ry);
+  const w = parseInt(width);
+  const h = parseInt(height);
+  const points = [x, y, x, y + h, x + w, y + h, x + w, y, x, y];
+  for (let i = 0; i < points.length - 2; i += 2) {
+    lines.push([
+      '_LF_',
+      [
+        'polyline',
+        [
+          'pts',
+          ['xy', kiUnits(points[i]), kiUnits(points[i + 1])],
+          ['xy', kiUnits(points[i + 2]), kiUnits(points[i + 3])],
+        ],
+        [
+          'stroke',
+          ['width', kiLineWidth(strokeWidth)],
+          ['type', kiLineStyle(strokeStyle)],
+          kiColor(strokeColor),
+        ],
+      ],
+    ]);
+  }
+  return lines;
+}
+
+export function convertText(args: string[]): ISpectraList {
   const [
     type,
     x,
@@ -223,14 +326,14 @@ export function convertText(args: string[]) {
   }
 }
 
-export function convertNoConnect(args: string[]) {
+export function convertNoConnect(args: string[]): ISpectraList {
   // note: Eda does not require unused pins to have the noconnect flag
   // to run Kicad ERC it is recommended to add them manually
   const [pinDotX, pinDotY, id, pathStr, color, locked] = args;
   return ['_LF_', ['no_connect', kiAt(pinDotX, pinDotY)]];
 }
 
-export function convertJunction(args: string[]) {
+export function convertJunction(args: string[]): ISpectraList {
   // note: junction color and size are enabled
   const [pinDotX, pinDotY, junctionCircleRadius, fillColor, id, locked] = args;
   // Eda radius default = 2.5; Kicad default diameter = 1.016mm
@@ -239,7 +342,7 @@ export function convertJunction(args: string[]) {
   return ['_LF_', ['junction', kiAt(pinDotX, pinDotY), ['diameter', radius], kiColor(fillColor)]];
 }
 
-export function convertWire(args: string[]) {
+export function convertWire(args: string[]): ISpectraList {
   // note: wire color and wire width are enabled
   const [points, strokeColor, strokeWidth, strokeStyle, fillColor, id, locked] = args;
   const coordList = points.split(' ');
@@ -259,7 +362,7 @@ export function convertWire(args: string[]) {
   return wires;
 }
 
-export function convertNetlabel(args: string[]) {
+export function convertNetlabel(args: string[]): ISpectraList {
   const [
     pinDotX,
     pinDotY,
@@ -285,13 +388,10 @@ export function convertNetlabel(args: string[]) {
   // Kicad global labels cannot be used to convert Eda netlabels.
   // Netlabels can however be converted to global labels in Kicad gui.
   // For global labels the Eda netport should have been used.
-  return [
-    '_LF_',
-    ['label', name, kiAt(pinDotX, pinDotY, rotation), kiEffects('1.27', '1', textAnchor)],
-  ];
+  return ['_LF_', ['label', name, kiAt(pinDotX, pinDotY, rotation), kiEffects('1.27')]];
 }
 
-export function convertNetPort(args: string[]) {
+export function convertNetPort(args: string[]): ISpectraList {
   // netflag type netport are changed to Kicad global labels.
   const [pinDotX, pinDotY, rotation, netFlag, textAnchor] = args;
   return [
@@ -301,39 +401,43 @@ export function convertNetPort(args: string[]) {
       netFlag,
       ['shape', 'bidirectional'],
       kiAt(pinDotX, pinDotY, rotation),
-      kiEffects('1.27', '1', textAnchor),
+      kiEffects('1.27'),
     ],
   ];
 }
 
-export function convertNetflag(args: string[], nfSymbolPresent: INetflags) {
+export function convertNetflag(
+  args: string[],
+  nfSymbolPresent: INetflags,
+  conversionState: IConversionState
+) {
   // Eda netflags will be changed to Kicad power symbols, except
   // 'part_netLabel_netPort'. This will become a global label.
   const segments: string[] = args.join('~').split('^^');
   const [partId, x, y, rotation, id, locked] = segments[0].split('~');
   const [pinDotX, pinDotY] = segments[1].split('~');
   const [netFlag, color, px, py, rot, textAnchor, visible, font, fontSize] = segments[2].split('~');
-  var shape: any[] = [];
-  var points;
-  var libtype;
-  var show;
-  var createNewSymbol = false;
+  let shape: any[] = [];
+  let points;
+  let libtype;
+  let show;
+  let createNewSymbol = false;
   switch (partId) {
     case 'part_netLabel_gnD':
-      libtype = '$GND';
+      libtype = '$GND1';
       show = '0';
-      if (!nfSymbolPresent.$GND) {
-        nfSymbolPresent.$GND = true;
+      if (!nfSymbolPresent.$GND1) {
+        nfSymbolPresent.$GND1 = true;
         createNewSymbol = true;
         points = '0 0 0 -1.27 1.27 -1.27 0 -2.54 -1.27 -1.27 0 -1.27';
         shape = ['_LF3_', ['polyline', ['pts', ...nfToPolygon(points.split(' '))]]];
       }
       break;
     case 'part_netLabel_GNd':
-      libtype = '$GND1';
+      libtype = '$GND2';
       show = '0';
-      if (!nfSymbolPresent.$GND1) {
-        nfSymbolPresent.$GND1 = true;
+      if (!nfSymbolPresent.$GND2) {
+        nfSymbolPresent.$GND2 = true;
         createNewSymbol = true;
         shape = [
           '_LF3_',
@@ -348,10 +452,10 @@ export function convertNetflag(args: string[], nfSymbolPresent: INetflags) {
       }
       break;
     case 'part_netLabel_gNd':
-      libtype = '$GND2';
+      libtype = '$GND3';
       show = '0';
-      if (!nfSymbolPresent.$GND2) {
-        nfSymbolPresent.$GND2 = true;
+      if (!nfSymbolPresent.$GND3) {
+        nfSymbolPresent.$GND3 = true;
         createNewSymbol = true;
         shape = [
           '_LF3_',
@@ -367,40 +471,65 @@ export function convertNetflag(args: string[], nfSymbolPresent: INetflags) {
         ];
       }
       break;
+    case 'part_netLabel_GnD':
+      libtype = '$EARTH';
+      show = '0';
+      if (!nfSymbolPresent.$EARTH) {
+        nfSymbolPresent.$EARTH = true;
+        createNewSymbol = true;
+        shape = [
+          '_LF3_',
+          ['polyline', ['pts', ...nfToPolygon('0 -1.27 0 0'.split(' '))]],
+          '_LF3_',
+          ['polyline', ['pts', ...nfToPolygon('-1.016 -1.27 -1.27 -2.032'.split(' '))]],
+          '_LF3_',
+          ['polyline', ['pts', ...nfToPolygon('-0.508 -1.27 -0.762 -2.032'.split(' '))]],
+          '_LF3_',
+          ['polyline', ['pts', ...nfToPolygon('0 -1.27 -0.254 -2.032'.split(' '))]],
+          '_LF3_',
+          ['polyline', ['pts', ...nfToPolygon('0.508 -1.27 0.254 -2.032'.split(' '))]],
+          '_LF3_',
+          ['polyline', ['pts', ...nfToPolygon('1.016 -1.27 -1.016 -1.27'.split(' '))]],
+          '_LF3_',
+          ['polyline', ['pts', ...nfToPolygon('1.016 -1.27 0.762 -2.032'.split(' '))]],
+        ];
+      }
+      break;
+    case 'part_netLabel_VEE':
+    case 'part_netLabel_-5V':
+      libtype = '$Vminus';
+      show = visible;
+      if (!nfSymbolPresent.$Vminus) {
+        nfSymbolPresent.$Vminus = true;
+        createNewSymbol = true;
+        points = '0 0 0 1.27 -0.762 1.27 0 2.54 0.762 1.27 0 1.27';
+        shape = [
+          '_LF3_',
+          ['polyline', ['pts', ...nfToPolygon(points.split(' '))], ['fill', ['type', 'outline']]],
+        ];
+      }
+      break;
     case 'part_netLabel_VCC':
     case 'part_netLabel_+5V':
-      if (netFlag.charAt(0) === '-') {
-        libtype = '$Vminus';
-        show = visible;
-        if (!nfSymbolPresent.$Vminus) {
-          nfSymbolPresent.$Vminus = true;
-          createNewSymbol = true;
-          points = '0 0 0 1.27 -0.762 1.27 0 2.54 0.762 1.27 0 1.27';
-          shape = [
-            '_LF3_',
-            ['polyline', ['pts', ...nfToPolygon(points.split(' '))], ['fill', ['type', 'outline']]],
-          ];
-        }
-      } else {
-        libtype = '$Vplus';
-        if (!nfSymbolPresent.$Vplus) {
-          nfSymbolPresent.$Vplus = true;
-          createNewSymbol = true;
-          shape = [
-            '_LF3_',
-            ['polyline', ['pts', ...nfToPolygon('-0.762 1.27 0 2.54'.split(' '))]],
-            '_LF3_',
-            ['polyline', ['pts', ...nfToPolygon('0 0 0 2.54'.split(' '))]],
-            '_LF3_',
-            ['polyline', ['pts', ...nfToPolygon('0 2.54 0.762 1.27'.split(' '))]],
-          ];
-        }
+      libtype = '$Vplus';
+      if (!nfSymbolPresent.$Vplus) {
+        nfSymbolPresent.$Vplus = true;
+        createNewSymbol = true;
+        shape = [
+          '_LF3_',
+          ['polyline', ['pts', ...nfToPolygon('-0.762 1.27 0 2.54'.split(' '))]],
+          '_LF3_',
+          ['polyline', ['pts', ...nfToPolygon('0 0 0 2.54'.split(' '))]],
+          '_LF3_',
+          ['polyline', ['pts', ...nfToPolygon('0 2.54 0.762 1.27'.split(' '))]],
+        ];
       }
       break;
     case 'part_netLabel_netPort':
       return [[pinDotX, pinDotY, rotation, netFlag, textAnchor], null, null, null];
     default:
-      console.warn(`Warning: unsupported netflag partId: ${partId} with id = ${id}`);
+      const msg = `Warning: unsupported netflag partId: ${partId} with id = ${id}`;
+      reportError(msg, conversionState);
       return null;
   }
   const compUuid: string = uuid();
@@ -412,7 +541,7 @@ export function convertNetflag(args: string[], nfSymbolPresent: INetflags) {
       ['lib_id', `Autogenerated:Powerflag_${libtype}`],
       ['at', kiUnits(parseFloat(pinDotX)), kiUnits(parseFloat(pinDotY)), parseFloat(rotation)],
       ['unit', 1],
-      ['in_bom', 'yes'],
+      ['in_bom', 'no'],
       ['on_board', 'yes'],
       ['uuid', compUuid],
       '_LF1_',
@@ -488,7 +617,7 @@ export function convertNetflag(args: string[], nfSymbolPresent: INetflags) {
   }
 }
 
-export function convertBus(args: string[]) {
+export function convertBus(args: string[]): ISpectraList {
   const [points, strokeColor, strokeWidth, stokeStyle, fillColor, id, locked] = args;
   const coordList = points.split(' ');
   const busses = [];
@@ -501,41 +630,45 @@ export function convertBus(args: string[]) {
   return busses;
 }
 
-export function convertBusEntry(args: string[]) {
+export function convertBusEntry(args: string[]): ISpectraList {
   const [rotation, startX, startY, endX, endY, id, locked] = args;
   const x = parseFloat(endX) - parseFloat(startX);
   const y = parseFloat(endY) - parseFloat(startY);
   return ['_LF_', ['bus_entry', kiAt(startX, startY), ['size', kiUnits(x), kiUnits(y)]]];
 }
 
-function convertSchematicV6ToArray(schematic: IEasyEDASchematic) {
-  var shape;
+function flatten<T>(arr: T[]) {
+  return ([] as T[]).concat(...arr);
+}
+
+function convertSchematicV6ToArray(
+  schematic: IEasyEDASchematic,
+  conversionState: IConversionState
+): ISpectraList {
+  let shape: string;
   const knownNetflags: INetflags = {
-    $GND: false,
     $GND1: false,
     $GND2: false,
+    $GND3: false,
+    $EARTH: false,
     $Vplus: false,
     $Vminus: false,
   };
-  const libSymbols = [];
-  const componentInstances = [];
-  const components = [];
-  const netlabels = [];
-  const wires = [];
-  const junctions = [];
-  const noconnects = [];
-  const busses = [];
-  const busentries = [];
-  const polylines = [];
-  const texts = [];
-  const nfSymbols = [];
-  const nfInstances = [];
-  const netflags = [];
-  const netports = [];
-  var libSymbol: any = [];
-  var symbolInstance: any = [];
-  var symbol: any = [];
-  const schNetPorts: any[] = [];
+  const componentInstances: ISpectraList = [];
+  const components: ISpectraList = [];
+  const netlabels: ISpectraList = [];
+  const wires: ISpectraList = [];
+  const junctions: ISpectraList = [];
+  const noconnects: ISpectraList = [];
+  const busses: ISpectraList = [];
+  const busentries: ISpectraList = [];
+  const polylines: ISpectraList = [];
+  const texts: ISpectraList = [];
+  const nfSymbols: ISpectraList = [];
+  const nfInstances: ISpectraList = [];
+  const netflags: ISpectraList = [];
+  const netports: ISpectraList = [];
+  const schNetPorts: any = [];
   const unsupportedShapes: { [key: string]: string } = {
     A: 'arc',
     AR: 'arrow',
@@ -545,17 +678,25 @@ function convertSchematicV6ToArray(schematic: IEasyEDASchematic) {
     PI: 'pie',
     PG: 'polygon',
     PT: 'path',
-    R: 'rectangle',
   };
+  // needed for symbol form compair
+  let CRCTable: number[];
+  CRCTable = makeCRCTable();
+  const msg =
+    'Info: below are the conversion remarks. The conversion may contain errors.' +
+    '\\nPlease read the remarks carefully and run the ERC check to solve issues.' +
+    '\\nTo find a component mentioned in the remarks go to:' +
+    '\\nKicad menu Edit > Find and enter the EDA_id (gge....); search for hidden fields.' +
+    '\\nOnly the id of the symbol can be found; the id of the shape is in the input json.';
+  reportError(msg, conversionState, 5);
   for (shape of schematic.shape) {
     const [type, ...args] = shape.split('~');
-    //console.info(`processing schematic type: ${type}`);
     if (type === 'B') {
       busses.push(...convertBus(args));
     } else if (type === 'BE') {
       busentries.push(...convertBusEntry(args));
     } else if (type === 'F') {
-      const nfresult = convertNetflag(args, knownNetflags);
+      const nfresult = convertNetflag(args, knownNetflags, conversionState);
       if (nfresult != null) {
         const [netport, nfSymbol, nfInstance, netflag] = nfresult;
         if (netport != null) {
@@ -575,19 +716,19 @@ function convertSchematicV6ToArray(schematic: IEasyEDASchematic) {
     } else if (type === 'J') {
       junctions.push(...convertJunction(args));
     } else if (type === 'LIB') {
-      const result = convertLibrary(args.join('~'), null);
-      if (result != null) {
-        [libSymbol, symbolInstance, symbol] = result;
-        libSymbols.push(...libSymbol);
-        componentInstances.push(...symbolInstance);
-        components.push(...symbol);
-      }
+      let symbolInstance: any = [];
+      let symbol: any = [];
+      [symbolInstance, symbol] = convertLibrary(args.join('~'), null, conversionState, CRCTable);
+      componentInstances.push(...symbolInstance);
+      components.push(...symbol);
     } else if (type === 'N') {
       netlabels.push(...convertNetlabel(args));
     } else if (type === 'O') {
       noconnects.push(...convertNoConnect(args));
     } else if (type === 'PL') {
       polylines.push(...convertPolyline(args));
+    } else if (type === 'R') {
+      polylines.push(...flatten(convertRect(args)));
     } else if (type === 'T') {
       texts.push(...convertText(args));
     } else if (type === 'W') {
@@ -600,22 +741,26 @@ function convertSchematicV6ToArray(schematic: IEasyEDASchematic) {
       type === 'I' ||
       type === 'PI' ||
       type === 'PG' ||
-      type === 'PT' ||
-      type === 'R'
+      type === 'PT'
     ) {
       // image: bit map image is supported in schematic (not symbol), but
       // requires SVG conversion to bitmap and is not implemented due to complexity
-      console.warn(
-        `Warning: ${unsupportedShapes[type]} shape found in schematics, but not supported by Kicad `
-      );
+      const msg = `Warning: unsupported shape ${unsupportedShapes[type]} found in schematics; shape ignored`;
+      reportError(msg, conversionState);
     } else {
-      console.warn(`Warning: unknown shape ${type} in schematics`);
+      const msg = `Warning: unknown shape ${type} found in schematics; shape ignored`;
+      reportError(msg, conversionState);
     }
   }
-  for (shape of schNetPorts) {
+  for (const shape of schNetPorts) {
     netports.push(...convertNetPort(shape));
   }
-  const outputSymbols = [...libSymbols, ...nfSymbols].filter((obj: any) => obj != null);
+  for (const msg of conversionState.savedLibMsgs) {
+    reportError(msg, conversionState);
+  }
+  const outputSymbols = [...flatten(conversionState.savedLibs), ...nfSymbols].filter(
+    (obj: any) => obj != null
+  );
   const outputInstances = [...componentInstances, ...nfInstances].filter((obj: any) => obj != null);
   const outputObjs = [
     '_LF_',
@@ -645,6 +790,8 @@ function convertSchematicV6ToArray(schematic: IEasyEDASchematic) {
     ['lib_symbols', ...outputSymbols],
     '_LF_',
     ...outputObjs,
+    ...flatten(conversionState.schReports),
+    '_LF_',
     ['sheet_instances', ['path', '/', ['page', '&1']]],
     '_LF_',
     '_LF_',
@@ -652,8 +799,16 @@ function convertSchematicV6ToArray(schematic: IEasyEDASchematic) {
   ];
 }
 
-export function convertSchematicV6(input: IEasyEDASchematicCollectionV6, sheet: number) {
+export function convertSchematicV6(input: IEasyEDASchematicCollectionV6, sheet: number): string[] {
   const numberOfSheet = input.schematics.length;
+  const conversionState: IConversionState = {
+    schRepCnt: 0,
+    schReports: [],
+    schReportsPosition: 0,
+    libTypes: {},
+    savedLibs: [],
+    savedLibMsgs: [],
+  };
   if (sheet > numberOfSheet) {
     console.warn(
       `Request for conversion of sheet ${sheet}, but only ${input.schematics.length} sheet(s) exist.`
@@ -665,5 +820,13 @@ export function convertSchematicV6(input: IEasyEDASchematicCollectionV6, sheet: 
     );
   }
   const schematic: IEasyEDASchematic = input.schematics[sheet - 1].dataStr;
-  return encodeObject(convertSchematicV6ToArray(schematic));
+  const schematics = encodeObject(convertSchematicV6ToArray(schematic, conversionState));
+  const schSymbols: ISpectraList = [
+    'kicad_symbol_lib',
+    ['version', 20200908],
+    ['generator', 'kicad_symbol_editor'],
+    ...flatten(conversionState.savedLibs),
+  ];
+  const symbols = encodeObject(schSymbols);
+  return [schematics, symbols];
 }

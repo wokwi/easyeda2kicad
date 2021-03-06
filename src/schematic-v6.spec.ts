@@ -11,7 +11,7 @@ import {
   convertWire,
   convertSchematicV6,
 } from './schematic-v6';
-import { encodeObject, ISpectraList } from './spectra';
+import { ISpectraList } from './spectra';
 
 function removeNullsAndFormating(a: ISpectraList): ISpectraList {
   return a
@@ -113,12 +113,7 @@ describe('convertShape as standin for conversions from function convertSchematic
   it('should convert F (netlabel) into Kicad local label', () => {
     const input = 'N~250~-530~0~#0000ff~CLK~gge471~start~252~-532.5~Times New Roman~7pt~0';
     expect(normalize(convertShape(input))).toEqual([
-      [
-        'label',
-        'CLK',
-        ['at', 63.5, -134.62, 180],
-        ['effects', ['font', ['size', 1.27, 1.27]], ['justify', 'left']],
-      ],
+      ['label', 'CLK', ['at', 63.5, -134.62, 180], ['effects', ['font', ['size', 1.27, 1.27]]]],
     ]);
   });
 });

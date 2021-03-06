@@ -1,32 +1,37 @@
-// Doc: https://docs.easyeda.com/en/DocumentFormat/2-EasyEDA-Schematic-File-Format/index.html
 import { IEasyEDALibrary, LibraryHead } from './easyeda-types';
 import { encodeObject, ISpectraList } from './spectra';
 import { computeArc } from './svg-arc';
-import { kiUnits } from './schematic-v6';
+import { kiUnits, IConversionState, reportError } from './schematic-v6';
 import { v4 as uuid } from 'uuid';
+
+// Doc: https://docs.easyeda.com/en/DocumentFormat/2-EasyEDA-Schematic-File-Format/index.html
 
 interface ICoordinates {
   x: number;
   y: number;
+  id?: string;
 }
 
 export interface IProperties {
   ref: string;
   value: string;
   pre: string;
-  component: any[];
+  lib: string;
+  rotation: number;
+  package: string;
+  component: ISpectraList;
   pinNameShowCount: number;
   pinNameHideCount: number;
   pinNumberShowCount: number;
   pinNumberHideCount: number;
 }
 
-function kiY(coordY: string) {
+function kiY(coordY: string): string {
   // Eda versus Kicad y-axis coordinates.
   // For Kicad lib is seems to work differently
-  // compaired to schematics.
+  // compared to schematics.
   // The mind mind boggles!
-  var kiY;
+  let kiY;
   if (coordY.includes('-')) {
     kiY = coordY.substring(1);
   } else {
@@ -35,8 +40,8 @@ function kiY(coordY: string) {
   return kiY;
 }
 
-function rotate({ x, y }: ICoordinates, degrees: number) {
-  var radians = (degrees / 180) * Math.PI;
+function rotate({ x, y }: ICoordinates, degrees: number): ICoordinates {
+  let radians = (degrees / 180) * Math.PI;
   return {
     x: x * Math.cos(radians) - y * Math.sin(radians),
     y: x * Math.sin(radians) + y * Math.cos(radians),
@@ -51,13 +56,7 @@ function kiCoords(x: string, y: string, transform: ICoordinates = { x: 0, y: 0 }
   };
 }
 
-function kiAt(
-  x: string,
-  y: string,
-  angle: number,
-  parentCoords?: ICoordinates,
-  lib: boolean = false
-) {
+function kiAt(x: string, y: string, angle: number, parentCoords?: ICoordinates): ISpectraList {
   const coords = kiCoords(x, y, parentCoords);
   return ['at', kiUnits(coords.x), kiUnits(coords.y), angle];
 }
@@ -80,7 +79,7 @@ function kiEffects(
   ];
 }
 
-function kiFillColor(stroke: string, fill: string) {
+function kiFillColor(stroke: string, fill: string): string {
   if (fill === 'none' || fill === '') {
     return 'none';
   } else if (stroke === fill) {
@@ -90,10 +89,15 @@ function kiFillColor(stroke: string, fill: string) {
   }
 }
 
-export function convertPin(args: string[], parentCoords: ICoordinates, symbolProp: IProperties) {
-  var libRad = 0;
+export function convertPin(
+  args: string[],
+  parentCoords: ICoordinates,
+  symbolProp: IProperties,
+  conversionState: IConversionState
+): ISpectraList {
+  let pinRotation = 0;
   const segments: string[] = args.join('~').split('^^');
-  const [pinDisplay, pinElectric, , pinX, pinY, pinRotation, id, locked] = segments[0].split('~');
+  const [pinDisplay, pinElectric, , pinX, pinY, pinRotate, id, locked] = segments[0].split('~');
   const [pinDotX, pinDotY] = segments[1].split('~');
   const [pinPath, pinColor] = segments[2].split('~');
   const [
@@ -132,19 +136,21 @@ export function convertPin(args: string[], parentCoords: ICoordinates, symbolPro
     '10': 'inverted',
     '11': 'inverted_clock',
   };
-  var pinLength = '0';
-  var orientation = 'h';
-  var startPoint = '0';
+  let pinLength = '0';
+  let orientation = 'h';
+  let startPoint = '0';
   const result = /^M\s*([-\d.\s]+)([h|v])\s*([-\d.\s]+)$/.exec(pinPath.replace(/[,\s]+/g, ' '));
   if (result != null) {
     [, startPoint, orientation, pinLength] = result;
   } else {
-    console.warn(`Warning: pin (${id}): could not determine pin location; pin command ignored `);
-    return null;
+    const msg = `Warning: pin (${id})${
+      parentCoords.id !== undefined ? ` of ${parentCoords.id}` : ''
+    }: could not determine pin location; pin ignored `;
+    return reportError(msg, conversionState);
   }
   // inverted pins have a length minus 6; add this to the length
   const pinlength = parseFloat(pinLength);
-  var length: number;
+  let length: number;
   dotVisible === '1'
     ? pinlength > 0
       ? (length = pinlength + 6)
@@ -153,36 +159,39 @@ export function convertPin(args: string[], parentCoords: ICoordinates, symbolPro
   // Eda allows pins with zero length but seems to ignores them
   // Kicad will show them, so we ignore them.
   if (pinLength === '0') {
-    console.warn(`Warning: pin (${id}) with length = 0 found in symbol; pin command ignored `);
-    return null;
+    const msg = `Warning: pin (${id})${
+      parentCoords.id !== undefined ? ` of ${parentCoords.id}` : ''
+    } with length = 0 found in symbol; pin ignored `;
+    return reportError(msg, conversionState);
   }
   if (pinElectric === '4') {
-    console.warn(
-      `Warning: pinElectric = power; power_in is assumed for pin ${nameText} (${id}) > edit symbol based on ERC check`
-    );
+    const msg =
+      `Warning: pinElectric = power; power_in is assumed for pin ${nameText} (${id})${
+        parentCoords.id !== undefined ? ` of ${parentCoords.id}` : ''
+      }` + '\\nAdjust symbol electric properties when needed based on ERC check.';
+    reportError(msg, conversionState, 2);
   }
-  // maybe there is a simpler solution with tha angle in Eda, but it seems to work.
   const [startX, startY] = startPoint.split(' ');
   if (orientation === 'h') {
     if (parseFloat(startX) == parseFloat(pinX) && parseFloat(pinLength) < 0) {
-      libRad = 180;
+      pinRotation = 180;
     } else if (parseFloat(startX) == parseFloat(pinX) && parseFloat(pinLength) > 0) {
-      libRad = 0;
+      pinRotation = 0;
     } else if (parseFloat(startX) != parseFloat(pinX) && parseFloat(pinLength) < 0) {
-      libRad = 0;
+      pinRotation = 0;
     } else if (parseFloat(startX) != parseFloat(pinX) && parseFloat(pinLength) > 0) {
-      libRad = 180;
+      pinRotation = 180;
     }
   }
   if (orientation === 'v') {
     if (parseFloat(startY) == parseFloat(pinY) && parseFloat(pinLength) < 0) {
-      libRad = 90;
+      pinRotation = 90;
     } else if (parseFloat(startY) == parseFloat(pinY) && parseFloat(pinLength) > 0) {
-      libRad = 270;
+      pinRotation = 270;
     } else if (parseFloat(startY) != parseFloat(pinY) && parseFloat(pinLength) < 0) {
-      libRad = 270;
+      pinRotation = 270;
     } else if (parseFloat(startY) != parseFloat(pinY) && parseFloat(pinLength) > 0) {
-      libRad = 90;
+      pinRotation = 90;
     }
   }
   // no individual pin/name hide in Kicad; base hide on overall hide status
@@ -203,7 +212,7 @@ export function convertPin(args: string[], parentCoords: ICoordinates, symbolPro
       'pin',
       electricType[pinElectric],
       graphicStyle[dotVisible + clockVisible],
-      kiAt(pinDotX, pinDotY, libRad, parentCoords),
+      kiAt(pinDotX, pinDotY, pinRotation, parentCoords),
       ['length', Math.abs(kiUnits(length))],
       '_LF4_',
       ['name', nameText === '' ? '~' : nameText, kiEffects(nameFontSize)],
@@ -245,7 +254,12 @@ function convertCircle(args: string[], parentCoords: ICoordinates) {
     ],
   ];
 }
-function convertEllipse(args: string[], parentCoords: ICoordinates) {
+
+function convertEllipse(
+  args: string[],
+  parentCoords: ICoordinates,
+  conversionState: IConversionState
+): ISpectraList {
   const [cx, cy, rx, ry, strokeColor, strokeWidth, , fillColor, id, locked] = args;
   if (rx === ry) {
     const center = kiCoords(cx, cy, parentCoords);
@@ -260,26 +274,29 @@ function convertEllipse(args: string[], parentCoords: ICoordinates) {
       ],
     ];
   } else {
-    console.warn(
-      `Warning: shape E (ellips) with unequal radiuses (${id}) in symbol; not supported in Kicad`
-    );
-    return null;
+    const msg = `Warning: shape E (ellips) with unequal radiuses (${id})${
+      parentCoords.id !== undefined ? ` of ${parentCoords.id}` : ''
+    } in symbol; not supported by Kicad`;
+    return reportError(msg, conversionState);
   }
 }
 
-function convertArc(args: string[], parentCoords: ICoordinates) {
+function convertArc(
+  args: string[],
+  parentCoords: ICoordinates,
+  conversionState: IConversionState
+): ISpectraList {
   const [path, , strokeColor, strokeWidth, , fillColor, id, locked] = args;
-  //const [match, startPoint, arcParams] = /^M\s*([-\d.\s]+)A\s*([-\d.\s]+)$/.exec(
-  //  path.replace(/[,\s]+/g, ' ')
-  //);
-  var startPoint;
-  var arcParams;
+  let startPoint;
+  let arcParams;
   const result = /^M\s*([-\d.\s]+)A\s*([-\d.\s]+)$/.exec(path.replace(/[,\s]+/g, ' '));
   if (result != null) {
     [, startPoint, arcParams] = result;
   } else {
-    console.warn(`Warning: arc (${id}): could not determine arc shape; arc command ignored `);
-    return null;
+    const msg = `Warning: arc (${id})${
+      parentCoords.id !== undefined ? ` of ${parentCoords.id}` : ''
+    }: could not determine arc shape; arc ignored `;
+    return reportError(msg, conversionState);
   }
   const [startX, startY] = startPoint.split(' ');
   const [svgRx, svgRy, xAxisRotation, largeArc, sweep, endX, endY] = arcParams.split(' ');
@@ -316,7 +333,7 @@ function pointListToPolygon(
   strokeColor: string,
   fillColor: string,
   parentCoords: ICoordinates = { x: 0, y: 0 }
-) {
+): ISpectraList {
   const polygonPoints = [];
   for (let i = 0; i < points.length; i += 2) {
     const coords = kiCoords(points[i], points[i + 1], parentCoords);
@@ -337,7 +354,7 @@ function pointListToPolygon(
   ];
 }
 
-function convertPolyline(args: string[], parentCoords: ICoordinates) {
+function convertPolyline(args: string[], parentCoords: ICoordinates): ISpectraList {
   const [points, strokeColor, strokeWidth, , fillColor, id, locked] = args;
   return [...pointListToPolygon(points.split(' '), false, strokeColor, fillColor, parentCoords)];
 }
@@ -347,12 +364,18 @@ function convertPolygon(args: string[], parentCoords: ICoordinates) {
   return [...pointListToPolygon(points.split(' '), true, strokeColor, fillColor, parentCoords)];
 }
 
-function convertPath(args: string[], parentCoords: ICoordinates) {
+function convertPath(
+  args: string[],
+  parentCoords: ICoordinates,
+  conversionState: IConversionState
+): ISpectraList {
   const [points, strokeColor, strokeWidth, , fillColor, id, locked] = args;
-  var closed = false;
+  let closed = false;
   if (/[A,C,H,Q,S,V]/gi.exec(points)) {
-    console.warn(`Warning: PT (path) with arcs/circles (${id}) in symbol; not supported in Kicad`);
-    return null;
+    const msg = `Warning: PT (path) with arcs/circles (${id})${
+      parentCoords.id !== undefined ? ` of ${parentCoords.id}` : ''
+    } in symbol; not supported by Kicad`;
+    return reportError(msg, conversionState);
   }
   if (/[Z]/gi.exec(points)) {
     closed = true;
@@ -361,13 +384,13 @@ function convertPath(args: string[], parentCoords: ICoordinates) {
   return [...pointListToPolygon(filteredPoints, closed, strokeColor, fillColor, parentCoords)];
 }
 
-function convertLine(args: string[], parentCoords: ICoordinates) {
+function convertLine(args: string[], parentCoords: ICoordinates): ISpectraList {
   const [sx, sy, ex, ey, strokeColor, strokeWidth, , fillColor, id, locked] = args;
   const points = [sx, sy, ex, ey];
   return [...pointListToPolygon(points, true, strokeColor, fillColor, parentCoords)];
 }
 
-export function convertText(args: string[], parentCoords: ICoordinates) {
+export function convertText(args: string[], parentCoords: ICoordinates): ISpectraList | null {
   const [
     type,
     x,
@@ -404,22 +427,36 @@ export function convertText(args: string[], parentCoords: ICoordinates) {
   }
 }
 
-function convertAnnotations(args: string[], parentCoords: ICoordinates, compProp: IProperties) {
+function convertAnnotations(
+  args: string[],
+  parentCoords: ICoordinates,
+  compProp: IProperties,
+  conversionState: IConversionState
+): any {
   const [type, x, y, rotation, , , fontSize, , , , , text, visible] = args;
-  var key;
-  var number;
-  var prop;
+  let key = '';
+  let number = 0;
+  let prop;
   if (type === 'P' || type === 'N') {
     if (type === 'P') {
       key = 'Reference';
       number = 0;
-      prop = `${text.replace(/[0-9]/g, '')}`;
+      if (text.indexOf('.') > 0) {
+        const msg =
+          `Warning: multipart shape ${text} found on schematics; not yet supported.` +
+          '\\nDrawn parts cannot share one footprint. Current solution: ' +
+          '\\nCreate new multi-unit symbol and paste existing symbols into the units' +
+          '\\nChange symbols in schematics with the new units of the multi-part symbol.';
+        reportError(msg, conversionState, 4);
+      }
+      prop = `${text.replace(/[0-9\.]/g, '')}`;
       compProp.ref = text;
+      compProp.pre = prop;
     }
     if (type === 'N') {
       key = 'Value';
       number = 1;
-      prop = text;
+      prop = '';
       compProp.value = text;
     }
     compProp.component = [
@@ -451,10 +488,10 @@ function convertAnnotations(args: string[], parentCoords: ICoordinates, compProp
 }
 
 function convertHead(head: LibraryHead, compProp: IProperties): ISpectraList {
-  const libProperties: any[] = [];
-  var number;
-  var hide;
-  const properties: { [key: string]: any } = {
+  const libProperties: ISpectraList = [];
+  let number;
+  let hide;
+  const properties: { [key: string]: Array<string | number> } = {
     Reference: ['pre', 0, ''],
     Value: ['name', 1, ''],
     Footprint: ['package', 2, 'hide'],
@@ -468,15 +505,13 @@ function convertHead(head: LibraryHead, compProp: IProperties): ISpectraList {
     if (head.c_para.hasOwnProperty(libkey)) {
       number = properties[key][1];
       hide = properties[key][2];
-      var prop = head.c_para[libkey];
+      let prop = head.c_para[libkey];
       switch (key) {
         case 'Reference':
           prop = prop.split('?')[0];
           break;
         case 'Value':
-          //prop = prop.split('(')[0];
           compProp.value = prop;
-          compProp.ref = prop;
           break;
         case 'ki_keywords':
           prop = prop.split('(')[0];
@@ -500,41 +535,84 @@ function convertHead(head: LibraryHead, compProp: IProperties): ISpectraList {
   return libProperties;
 }
 
-export function convertLibrary(schematicsLIB: string | null, library: IEasyEDALibrary | null) {
+function shapeToCRC32(str: string, CRCTable: number[]): number {
+  let crc = -1;
+  for (let i = 0, iTop = str.length; i < iTop; i++) {
+    crc = (crc >>> 8) ^ CRCTable[(crc ^ str.charCodeAt(i)) & 0xff];
+  }
+  return (crc ^ -1) >>> 0;
+}
+
+function symbolCompare(
+  symbol: string,
+  shape: ISpectraList,
+  conversionState: IConversionState,
+  compProp: IProperties,
+  CRCTable: number[]
+) {
+  const crcKey = shapeToCRC32(encodeObject(shape), CRCTable);
+  if (conversionState.libTypes.hasOwnProperty(crcKey)) {
+    compProp.lib = conversionState.libTypes[crcKey];
+    conversionState.savedLibMsgs.push(
+      `Info: symbol for ${symbol} (rotation:${compProp.rotation}) exits as ${compProp.lib}`
+    );
+    return false;
+  } else {
+    const name = `${compProp.pre}_${crcKey.toString(16).toUpperCase()}`;
+    conversionState.libTypes[crcKey] = name;
+    compProp.lib = name;
+    conversionState.savedLibMsgs.push(
+      `Info: symbol for ${symbol} (rotation:${compProp.rotation}) is new as ${name}`
+    );
+    return true;
+  }
+}
+
+export function convertLibrary(
+  schematicsLIB: string | null,
+  library: IEasyEDALibrary | null,
+  conversionState: IConversionState,
+  CRCTable: number[]
+): ISpectraList {
   const compProp: IProperties = {
     ref: '',
     value: '',
     pre: '',
-    component: [],
+    lib: '',
+    rotation: 0,
+    package: '',
     pinNameShowCount: 0,
     pinNameHideCount: 0,
     pinNumberShowCount: 0,
     pinNumberHideCount: 0,
+    component: [],
   };
   const unsupportedShapes: { [key: string]: string } = {
     AR: 'arrow',
     I: 'image',
     PI: 'pie',
   };
-  var symbolLibProp = [];
-  const symbolLibText = [];
-  const symbolLibArc = [];
-  const symbolLibCircle = [];
-  const symbolLibRect = [];
-  const symbolLibPoly = [];
-  const symbolLibPin = [];
-  var newComponent: any[] = [];
-  var newComponentInstance: any[] = [];
-  var newComponentProp: any[] = [];
+  const symbolLibText: ISpectraList = [];
+  const symbolLibArc: ISpectraList = [];
+  const symbolLibCircle: ISpectraList = [];
+  const symbolLibRect: ISpectraList = [];
+  const symbolLibPoly: ISpectraList = [];
+  const symbolLibPin: ISpectraList = [];
+  let symbolLibProp: ISpectraList = [];
+  let errorReports: ISpectraList = [];
+  let newComponent: ISpectraList = [];
+  let newComponentInstance: ISpectraList = [];
+  let newComponentProp: ISpectraList = [];
+  //
   // Eda library .json input document is processed
+  //
   if (library !== null) {
-    const transform = { x: library.head.x, y: library.head.y };
+    const transform: ICoordinates = { x: library.head.x, y: library.head.y };
     symbolLibProp = flatten(convertHead(library.head, compProp));
     for (const shape of library.shape) {
       const [type, ...shapeArgs] = shape.split('~');
-      //console.info(`processing library type: ${type}`);
       if (type === 'P') {
-        const result = convertPin(shapeArgs, transform, compProp);
+        const result = convertPin(shapeArgs, transform, compProp, conversionState);
         if (result !== null) {
           symbolLibPin.push(...result);
         }
@@ -544,14 +622,14 @@ export function convertLibrary(schematicsLIB: string | null, library: IEasyEDALi
           symbolLibText.push(...result);
         }
       } else if (type === 'A') {
-        const result = convertArc(shapeArgs, transform);
+        const result = convertArc(shapeArgs, transform, conversionState);
         if (result !== null) {
           symbolLibArc.push(...result);
         }
       } else if (type === 'C') {
         symbolLibCircle.push(...convertCircle(shapeArgs, transform));
       } else if (type === 'E') {
-        const result = convertEllipse(shapeArgs, transform);
+        const result = convertEllipse(shapeArgs, transform, conversionState);
         if (result !== null) {
           symbolLibCircle.push(...result);
         }
@@ -564,19 +642,66 @@ export function convertLibrary(schematicsLIB: string | null, library: IEasyEDALi
       } else if (type === 'PG') {
         symbolLibPoly.push(...convertPolygon(shapeArgs, transform));
       } else if (type === 'PT') {
-        const result = convertPath(shapeArgs, transform);
+        const result = convertPath(shapeArgs, transform, conversionState);
         if (result !== null) {
           symbolLibPoly.push(...result);
         }
-      } else if (type === 'AR' || type === 'PI' || type === 'I') {
-        console.warn(
-          `Warning: ${unsupportedShapes[type]} shape found in library, but not supported by Kicad `
-        );
+      } else if (unsupportedShapes.hasOwnProperty(type)) {
+        const msg = `Warning: ${unsupportedShapes[type]} (${type}) shape found in library; not supported by Kicad `;
+        reportError(msg, conversionState);
       } else {
-        console.warn(`Warning: unknown shape ${type}`);
+        const msg = `Warning: unknown shape ${type} found; ignored`;
+        reportError(msg, conversionState);
       }
     }
+    errorReports = flatten(conversionState.schReports);
+    return [
+      '_LF1_',
+      [
+        'symbol',
+        // 'EasyEDA' should be the file name of the library,
+        // but it seems not to be mandatory: EasyEDA.kicad_sym
+        // multiple symbols can be manually collected in this library
+        'EasyEDA:' + compProp.ref,
+        // pin names and number are auto placed (no coords needed)
+        // show or hide are controlled globally based on the
+        // show & hide count of the Eda symbol
+        compProp.pinNumberShowCount < compProp.pinNumberHideCount ? ['pin_numbers', 'hide'] : null,
+        // X controls name placing : (pin_names (offset X))
+        // 0 = outside (above/below pin); 2 = inside (next to pin)
+        [
+          'pin_names',
+          ['offset', 2],
+          compProp.pinNameShowCount < compProp.pinNameHideCount ? 'hide' : null,
+        ],
+        // standard defaults
+        ['in_bom', 'yes'],
+        ['on_board', 'yes'],
+        // here only the properties
+        // note: positioned at the center of the symbol (0,0)
+        // they will be auto placed outside the symbol in the schematic
+        ...symbolLibProp,
+        '_LF2_',
+        // here only the text definitions
+        ['symbol', compProp.ref + '_0_0', ...symbolLibText, ...errorReports],
+        '_LF2_',
+        // here all other than property, pin & text definitions
+        [
+          'symbol',
+          `${compProp.ref}_0_1`,
+          ...symbolLibArc,
+          ...symbolLibCircle,
+          ...symbolLibRect,
+          ...symbolLibPoly,
+        ],
+        '_LF2_',
+        // here only the pin definitions
+        ['symbol', `${compProp.ref}_1_1`, ...symbolLibPin],
+      ],
+    ];
+    //
     // called from schematics-v6 for processing LIB shape
+    //
   } else if (schematicsLIB !== null) {
     const [libHead, ...shapeList] = schematicsLIB.split('#@$');
     const [x, y, attributes, rotation, importFlag, id, locked] = libHead.split('~');
@@ -584,17 +709,36 @@ export function convertLibrary(schematicsLIB: string | null, library: IEasyEDALi
     if (id === 'frame_lib_1') {
       return [];
     }
-    const transform = { x: parseFloat(x), y: parseFloat(y) };
+    const angle = rotation === '' ? 0 : parseInt(rotation);
+    const transform: ICoordinates = {
+      x: parseInt(x),
+      y: parseInt(y),
+      id: id,
+    };
     const attrList = attributes.split('`');
     const attrs: { [key: string]: string } = {};
     for (let i = 0; i < attrList.length; i += 2) {
       attrs[attrList[i]] = attrList[i + 1];
     }
-    const compFootprint = attrs['package'];
+    compProp.package = attrs['package'];
+    compProp.rotation = rotation === '' ? 0 : parseInt(rotation);
+    newComponentProp.push(
+      ...[
+        '_LF2_',
+        [
+          'property',
+          'EDA_id',
+          id,
+          ['id', 4],
+          ['at', kiUnits(x), kiUnits(y), 0],
+          ['effects', ['font', ['size', 1.27, 1.27]], 'hide'],
+        ],
+      ]
+    );
     for (const shape of shapeList) {
       const [type, ...shapeArgs] = shape.split('~');
       if (type === 'P') {
-        const result = convertPin(shapeArgs, transform, compProp);
+        const result = convertPin(shapeArgs, transform, compProp, conversionState);
         if (result !== null) {
           symbolLibPin.push(...result);
         }
@@ -603,20 +747,20 @@ export function convertLibrary(schematicsLIB: string | null, library: IEasyEDALi
         if (result !== null) {
           symbolLibText.push(...result);
         }
-        symbolLibProp.push(...convertAnnotations(shapeArgs, transform, compProp));
+        symbolLibProp.push(...convertAnnotations(shapeArgs, transform, compProp, conversionState));
         if (compProp.component != []) {
           newComponentProp.push(...compProp.component);
           compProp.component = [];
         }
       } else if (type === 'A') {
-        const result = convertArc(shapeArgs, transform);
+        const result = convertArc(shapeArgs, transform, conversionState);
         if (result !== null) {
           symbolLibArc.push(...result);
         }
       } else if (type === 'C') {
         symbolLibCircle.push(...convertCircle(shapeArgs, transform));
       } else if (type === 'E') {
-        const result = convertEllipse(shapeArgs, transform);
+        const result = convertEllipse(shapeArgs, transform, conversionState);
         if (result !== null) {
           symbolLibCircle.push(...result);
         }
@@ -629,126 +773,138 @@ export function convertLibrary(schematicsLIB: string | null, library: IEasyEDALi
       } else if (type === 'PG') {
         symbolLibPoly.push(...convertPolygon(shapeArgs, transform));
       } else if (type === 'PT') {
-        const result = convertPath(shapeArgs, transform);
+        const result = convertPath(shapeArgs, transform, conversionState);
         if (result !== null) {
           symbolLibPoly.push(...result);
         }
+      } else if (unsupportedShapes.hasOwnProperty(type)) {
+        const msg = `Warning: ${unsupportedShapes[type]} (${type}) shape found in library ${id}; not supported by Kicad `;
+        reportError(msg, conversionState);
       } else {
-        console.warn(`Warning: unsupported shape ${type} in symbol (${id})`);
+        const msg = `Warning: unknown shape ${type} found with id ${id}; ignored`;
+        reportError(msg, conversionState);
       }
-      const compUuid: string = uuid();
-      newComponent = [
-        '_LF_',
-        '_LF_',
-        [
-          'symbol',
-          ['lib_id', 'EasyEDA:' + compProp.ref],
-          kiAt(x, kiY(y), 0),
-          ['unit', 1],
-          ['in_bom', 'yes'],
-          ['on_board', 'yes'],
-          ['uuid', compUuid],
-          ...newComponentProp,
-        ],
-      ];
-      newComponentInstance = [
+    }
+    // collect the shape info to compare symbols
+    const symbolShape: ISpectraList = [
+      ...symbolLibText,
+      ...symbolLibArc,
+      ...symbolLibCircle,
+      ...symbolLibRect,
+      ...symbolLibPoly,
+      ...symbolLibPin,
+    ];
+    //
+    // create new lib symbol if compare fails
+    //
+    let newSymbol: boolean = false;
+    if (symbolCompare(compProp.ref, symbolShape, conversionState, compProp, CRCTable)) {
+      let symbol: ISpectraList = [];
+      newSymbol = true;
+      symbol = [
         '_LF1_',
         [
-          'path',
-          '/' + compUuid,
-          ['reference', compProp.ref],
-          ['unit', 1],
-          ['value', compProp.value],
-          ['footprint', compFootprint],
+          'symbol',
+          'EasyEDA:' + compProp.lib,
+          compProp.pinNumberShowCount < compProp.pinNumberHideCount
+            ? ['pin_numbers', 'hide']
+            : null,
+          [
+            'pin_names',
+            ['offset', 2],
+            compProp.pinNameShowCount < compProp.pinNameHideCount ? 'hide' : null,
+          ],
+          ['in_bom', 'yes'],
+          ['on_board', 'yes'],
+          ...symbolLibProp,
+          '_LF2_',
+          ['symbol', compProp.lib + '_0_0', ...symbolLibText, ...errorReports],
+          '_LF2_',
+          [
+            'symbol',
+            `${compProp.lib}_0_1`,
+            ...symbolLibArc,
+            ...symbolLibCircle,
+            ...symbolLibRect,
+            ...symbolLibPoly,
+          ],
+          '_LF2_',
+          ['symbol', `${compProp.lib}_1_1`, ...symbolLibPin],
         ],
       ];
+      conversionState.savedLibs.push(symbol);
     }
-  }
-  const newSymbol = [
-    '_LF1_',
-    [
-      'symbol',
-      // 'Project' should be the file name of the library,
-      // but it seems not to be mandatory: Project.kicad_sym
-      // multiple symbols can be manually collected in this library
-      'EasyEDA:' + compProp.ref,
-      // pin names and number are auto placed (no coords needed)
-      // show or hide are controlled globally based on the
-      // show & hide count of the Eda symbol
-      compProp.pinNumberShowCount < compProp.pinNumberHideCount ? ['pin_numbers', 'hide'] : null,
-      // X controls name placing : (pin_names (offset X))
-      // 0 = outside (above/below pin); 2 = inside (next to pin)
-      [
-        'pin_names',
-        ['offset', 2],
-        compProp.pinNameShowCount < compProp.pinNameHideCount ? 'hide' : null,
-      ],
-      // standard defaults
-      ['in_bom', 'yes'],
-      ['on_board', 'yes'],
-      // here only the properties
-      // note: positioned at the center of the symbol (0,0)
-      // they will be auto placed outside the symbol in the schematic
-      ...symbolLibProp,
-      '_LF2_',
-      // here only the text definitions
-      ['symbol', compProp.ref + '_0_0', ...symbolLibText],
-      '_LF2_',
-      // here all other than property, pin & text definitions
+    //
+    // create component & component instance
+    //
+    const compUuid: string = uuid();
+    newComponent = [
+      '_LF_',
+      '_LF_',
       [
         'symbol',
-        `${compProp.ref}_0_1`,
-        ...symbolLibArc,
-        ...symbolLibCircle,
-        ...symbolLibRect,
-        ...symbolLibPoly,
+        ['lib_id', 'EasyEDA:' + compProp.lib],
+        kiAt(x, kiY(y), 0),
+        ['unit', 1],
+        ['in_bom', 'yes'],
+        ['on_board', 'yes'],
+        ['uuid', compUuid],
+        ...newComponentProp,
       ],
-      '_LF2_',
-      // here only the pin definitions
-      ['symbol', `${compProp.ref}_1_1`, ...symbolLibPin],
-    ],
-  ];
-  if (library !== null) {
-    return [...newSymbol];
-  } else {
-    return [newSymbol, newComponentInstance, newComponent];
+    ];
+    newComponentInstance = [
+      '_LF1_',
+      [
+        'path',
+        '/' + compUuid,
+        ['reference', compProp.ref],
+        ['unit', 1],
+        ['value', compProp.value],
+        ['footprint', compProp.package],
+      ],
+    ];
+    return [newComponentInstance, newComponent];
   }
+  return ['Conversion error'];
 }
 
 function flatten<T>(arr: T[]) {
   return ([] as T[]).concat(...arr);
 }
 function convertLibraryToV6Array(library: IEasyEDALibrary): ISpectraList {
-  const result = convertLibrary(null, library);
-  //if (result !== null) {
+  const conversionState: IConversionState = {
+    schRepCnt: 0,
+    schReports: [],
+    schReportsPosition: 0,
+    libTypes: {},
+    savedLibs: [],
+    savedLibMsgs: [],
+    convertingSymFile: true,
+  };
+  const result = convertLibrary(null, library, conversionState, [0]);
   return [
     //
-    // Kicad lib symbols are normallised wih 0,0 as center
+    // Kicad lib symbols are normalized with 0,0 as center
     // based on the head x,y coords of the Eda LIB
     //
-    // schematic-v6 will, at this moment, generate a symbol for
-    // every component in the schematic. In future this should
-    // be changed in shared symbols
-    //
-    // note: multi part symbols NOT YET supported
+    // note-1: multi part symbols NOT YET supported.
+    // note-2: schematics shared symbols are only implemented
+    //         for symbols with the same Eda rotation angle.
     //
     'kicad_symbol_lib',
     ['version', 20210126],
     ['generator', 'kicad_symbol_editor'],
     ...result,
   ];
-  //} else {
-  //  return [];
-  // }
 }
 // main.ts will automatically detect an Eda library .json as input.
 //
 // How to get a Eda library .json file:
-// go to Eda online editor and click on library icon (on left side),
+// go to Eda on line editor and click on library icon (on left side),
 // select wanted symbol and click EDIT button
 // choose menu File > EasyEDa File Source > click DOWNLOAD button.
 //
-// The generated output file is saved as symbolname.kicad_sym.
+// The generated output file is saved as symbol-name.kicad_sym.
 // Import file in Kicad using:
 // menu Preferences > Manage Symbol Libraries
 export function convertLibraryV6(library: IEasyEDALibrary): string {

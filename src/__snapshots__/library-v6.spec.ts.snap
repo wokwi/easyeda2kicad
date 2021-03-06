@@ -5,7 +5,7 @@ Array [
   "_LF1_",
   Array [
     "symbol",
-    "EasyEDA:PC357NJ0000F",
+    "EasyEDA:",
     null,
     Array [
       "pin_names",
@@ -166,7 +166,7 @@ Array [
     "_LF2_",
     Array [
       "symbol",
-      "PC357NJ0000F_0_0",
+      "_0_0",
       "_LF3_",
       Array [
         "text",
@@ -200,7 +200,7 @@ Array [
     "_LF2_",
     Array [
       "symbol",
-      "PC357NJ0000F_0_1",
+      "_0_1",
       "_LF3_",
       Array [
         "arc",
@@ -770,7 +770,7 @@ Array [
     "_LF2_",
     Array [
       "symbol",
-      "PC357NJ0000F_1_1",
+      "_1_1",
       "_LF3_",
       Array [
         "pin",
