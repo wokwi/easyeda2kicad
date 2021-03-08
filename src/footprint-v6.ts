@@ -282,7 +282,7 @@ export function convertFp(
       } else if (type === 'TEXT') {
         footprintText.push(...convertText(shapeArgs, conversionState, 'fp_text', transform));
       } else if (type === 'ARC') {
-        footprintArc.push(convertArc(shapeArgs, conversionState, 'fp_arc', transform));
+        footprintArc.push(...convertArc(shapeArgs, conversionState, 'fp_arc', transform));
       } else if (type === 'HOLE') {
         footprintHole.push(...convertLibHole(shapeArgs, transform));
       } else if (type === 'PAD') {
@@ -321,6 +321,7 @@ export function convertFp(
       ...footprintProp,
       ...fpAttrs,
       ...footprintText,
+      ...flatten(conversionState.msgReports),
       ...footprintLine,
       ...footprintRect,
       ...footprintCircle,

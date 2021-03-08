@@ -32,7 +32,7 @@ if (!inputMatch) {
 }
 const [match, inputDirName, inputFileName] = inputMatch;
 const input = JSON.parse(fs.readFileSync(process.argv[2], 'utf-8'));
-var outputFileName;
+var outputFileName = 'unknown';
 let name = '';
 let output = '';
 let doctype = '0';
@@ -50,7 +50,13 @@ if (doctype === '5') {
   // footprint
   console.info(`Converting EasyEDA footprint ${process.argv[2]} to Kicad footprint`);
   [name, output] = convertFootprint(input).split('#@$');
-  outputFileName = inputDirName + name;
+  if (process.argv[3] !== '-') {
+    const dir = './EasyEDA.pretty';
+    outputFileName = dir + '/' + inputDirName + name;
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+  }
 } else if (doctype === '3') {
   // board
   if (process.argv[4] === 'v5') {
