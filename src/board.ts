@@ -333,6 +333,10 @@ function convertArc(
     end.y
   );
   const endPoint = sweep === '1' ? start : end;
+  if (isNaN(cx) || isNaN(cy)) {
+    console.warn(`Invalid arc: ${path}`);
+    return null;
+  }
   return [
     objName,
     ['start', cx, cy], // actually center
