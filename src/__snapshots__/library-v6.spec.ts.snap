@@ -1,0 +1,1001 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`convertLibrary full test should convert an EasyEDA library file to a Kicad symbol file 1`] = `
+Array [
+  "_LF1_",
+  Array [
+    "symbol",
+    "EasyEDA:",
+    null,
+    Array [
+      "pin_names",
+      Array [
+        "offset",
+        2,
+      ],
+      "hide",
+    ],
+    Array [
+      "in_bom",
+      "yes",
+    ],
+    Array [
+      "on_board",
+      "yes",
+    ],
+    "_LF2_",
+    Array [
+      "property",
+      "Reference",
+      "U",
+      Array [
+        "id",
+        0,
+      ],
+      Array [
+        "at",
+        0,
+        0,
+        0,
+      ],
+      Array [
+        "effects",
+        Array [
+          "font",
+          Array [
+            "size",
+            1.27,
+            1.27,
+          ],
+        ],
+        null,
+      ],
+    ],
+    "_LF2_",
+    Array [
+      "property",
+      "Value",
+      "PC357NJ0000F",
+      Array [
+        "id",
+        1,
+      ],
+      Array [
+        "at",
+        0,
+        0,
+        0,
+      ],
+      Array [
+        "effects",
+        Array [
+          "font",
+          Array [
+            "size",
+            1.27,
+            1.27,
+          ],
+        ],
+        null,
+      ],
+    ],
+    "_LF2_",
+    Array [
+      "property",
+      "Footprint",
+      "OPTO-SMD-4_L4.4-W4.1-P2.54-LS7.0-BR",
+      Array [
+        "id",
+        2,
+      ],
+      Array [
+        "at",
+        0,
+        0,
+        0,
+      ],
+      Array [
+        "effects",
+        Array [
+          "font",
+          Array [
+            "size",
+            1.27,
+            1.27,
+          ],
+        ],
+        "hide",
+      ],
+    ],
+    "_LF2_",
+    Array [
+      "property",
+      "ki_keywords",
+      "PC357NJ0000F",
+      Array [
+        "id",
+        4,
+      ],
+      Array [
+        "at",
+        0,
+        0,
+        0,
+      ],
+      Array [
+        "effects",
+        Array [
+          "font",
+          Array [
+            "size",
+            1.27,
+            1.27,
+          ],
+        ],
+        "hide",
+      ],
+    ],
+    "_LF2_",
+    Array [
+      "property",
+      "ki_description",
+      "part manufactured by: Sharp Microelectronics",
+      Array [
+        "id",
+        5,
+      ],
+      Array [
+        "at",
+        0,
+        0,
+        0,
+      ],
+      Array [
+        "effects",
+        Array [
+          "font",
+          Array [
+            "size",
+            1.27,
+            1.27,
+          ],
+        ],
+        "hide",
+      ],
+    ],
+    "_LF2_",
+    Array [
+      "symbol",
+      "_0_0",
+      "_LF3_",
+      Array [
+        "text",
+        "LED",
+        Array [
+          "at",
+          -4.064,
+          1.778,
+          0,
+        ],
+        Array [
+          "effects",
+          Array [
+            "font",
+            Array [
+              "size",
+              1.27,
+              1.27,
+            ],
+          ],
+          null,
+          null,
+          Array [
+            "justify",
+            "left",
+          ],
+          null,
+        ],
+      ],
+    ],
+    "_LF2_",
+    Array [
+      "symbol",
+      "_0_1",
+      "_LF3_",
+      Array [
+        "arc",
+        Array [
+          "start",
+          4.8260000000000005,
+          -1.27,
+        ],
+        Array [
+          "end",
+          4.851400000000006,
+          1.27,
+        ],
+        Array [
+          "radius",
+          Array [
+            "at",
+            4.838700000000003,
+            0,
+          ],
+          Array [
+            "length",
+            1.27,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "none",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "circle",
+        Array [
+          "center",
+          -8.255,
+          4.445,
+        ],
+        Array [
+          "radius",
+          0.381,
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "none",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "rectangle",
+        Array [
+          "start",
+          -7.62,
+          4.064,
+        ],
+        Array [
+          "end",
+          0.762,
+          -4.318,
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "none",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "rectangle",
+        Array [
+          "start",
+          1.778,
+          4.064,
+        ],
+        Array [
+          "end",
+          7.62,
+          -4.318,
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "none",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "polyline",
+        Array [
+          "pts",
+          Array [
+            "xy",
+            7.62,
+            2.54,
+          ],
+          Array [
+            "xy",
+            5.08,
+            0.762,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "none",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "polyline",
+        Array [
+          "pts",
+          Array [
+            "xy",
+            5.08,
+            -0.762,
+          ],
+          Array [
+            "xy",
+            7.62,
+            -2.54,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "none",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "polyline",
+        Array [
+          "pts",
+          Array [
+            "xy",
+            5.08,
+            2.286,
+          ],
+          Array [
+            "xy",
+            5.08,
+            -2.286,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "none",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "polyline",
+        Array [
+          "pts",
+          Array [
+            "xy",
+            7.62,
+            -2.54,
+          ],
+          Array [
+            "xy",
+            6.8580000000000005,
+            -1.27,
+          ],
+          Array [
+            "xy",
+            6.096,
+            -2.286,
+          ],
+          Array [
+            "xy",
+            7.62,
+            -2.54,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "outline",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "polyline",
+        Array [
+          "pts",
+          Array [
+            "xy",
+            -0.508,
+            -2.032,
+          ],
+          Array [
+            "xy",
+            -1.016,
+            -1.016,
+          ],
+          Array [
+            "xy",
+            -1.524,
+            -1.524,
+          ],
+          Array [
+            "xy",
+            -0.508,
+            -2.032,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "outline",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "polyline",
+        Array [
+          "pts",
+          Array [
+            "xy",
+            0.254,
+            -1.016,
+          ],
+          Array [
+            "xy",
+            -0.254,
+            0,
+          ],
+          Array [
+            "xy",
+            -0.762,
+            -0.508,
+          ],
+          Array [
+            "xy",
+            0.254,
+            -1.016,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "outline",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "polyline",
+        Array [
+          "pts",
+          Array [
+            "xy",
+            -2.286,
+            -0.254,
+          ],
+          Array [
+            "xy",
+            -0.508,
+            -2.032,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "none",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "polyline",
+        Array [
+          "pts",
+          Array [
+            "xy",
+            -1.524,
+            0.762,
+          ],
+          Array [
+            "xy",
+            0.254,
+            -1.016,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "none",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "polyline",
+        Array [
+          "pts",
+          Array [
+            "xy",
+            -2.286,
+            -1.27,
+          ],
+          Array [
+            "xy",
+            -6.35,
+            -1.27,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "none",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "polyline",
+        Array [
+          "pts",
+          Array [
+            "xy",
+            -5.8420000000000005,
+            1.27,
+          ],
+          Array [
+            "xy",
+            -4.318,
+            -1.27,
+          ],
+          Array [
+            "xy",
+            -2.54,
+            1.27,
+          ],
+          Array [
+            "xy",
+            -5.8420000000000005,
+            1.27,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "outline",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "polyline",
+        Array [
+          "pts",
+          Array [
+            "xy",
+            -7.62,
+            2.54,
+          ],
+          Array [
+            "xy",
+            -4.318,
+            2.54,
+          ],
+          Array [
+            "xy",
+            -4.318,
+            -2.54,
+          ],
+          Array [
+            "xy",
+            -7.62,
+            -2.54,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "none",
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "polyline",
+        Array [
+          "pts",
+          Array [
+            "xy",
+            -1.524,
+            -3.048,
+          ],
+          Array [
+            "xy",
+            0,
+            -3.81,
+          ],
+          Array [
+            "xy",
+            -1.27,
+            -3.81,
+          ],
+          Array [
+            "xy",
+            -5.08,
+            -3.81,
+          ],
+          Array [
+            "xy",
+            -3.81,
+            -3.048,
+          ],
+          Array [
+            "xy",
+            -1.524,
+            -3.048,
+          ],
+        ],
+        Array [
+          "stroke",
+          Array [
+            "width",
+            0,
+          ],
+        ],
+        Array [
+          "fill",
+          Array [
+            "type",
+            "none",
+          ],
+        ],
+      ],
+    ],
+    "_LF2_",
+    Array [
+      "symbol",
+      "_1_1",
+      "_LF3_",
+      Array [
+        "pin",
+        "input",
+        "clock",
+        Array [
+          "at",
+          -12.7,
+          2.54,
+          0,
+        ],
+        Array [
+          "length",
+          5.08,
+        ],
+        "_LF4_",
+        Array [
+          "name",
+          "A",
+          Array [
+            "effects",
+            Array [
+              "font",
+              Array [
+                "size",
+                1.27,
+                1.27,
+              ],
+            ],
+            null,
+            null,
+            null,
+            null,
+          ],
+        ],
+        "_LF4_",
+        Array [
+          "number",
+          "1",
+          Array [
+            "effects",
+            Array [
+              "font",
+              Array [
+                "size",
+                1.27,
+                1.27,
+              ],
+            ],
+            null,
+            null,
+            null,
+            null,
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "pin",
+        "output",
+        "inverted",
+        Array [
+          "at",
+          -12.7,
+          -2.54,
+          0,
+        ],
+        Array [
+          "length",
+          5.08,
+        ],
+        "_LF4_",
+        Array [
+          "name",
+          "B",
+          Array [
+            "effects",
+            Array [
+              "font",
+              Array [
+                "size",
+                1.27,
+                1.27,
+              ],
+            ],
+            null,
+            null,
+            null,
+            null,
+          ],
+        ],
+        "_LF4_",
+        Array [
+          "number",
+          "2",
+          Array [
+            "effects",
+            Array [
+              "font",
+              Array [
+                "size",
+                1.27,
+                1.27,
+              ],
+            ],
+            null,
+            null,
+            null,
+            null,
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "pin",
+        "passive",
+        "inverted_clock",
+        Array [
+          "at",
+          12.7,
+          2.54,
+          180,
+        ],
+        Array [
+          "length",
+          5.08,
+        ],
+        "_LF4_",
+        Array [
+          "name",
+          "D",
+          Array [
+            "effects",
+            Array [
+              "font",
+              Array [
+                "size",
+                1.27,
+                1.27,
+              ],
+            ],
+            null,
+            null,
+            null,
+            null,
+          ],
+        ],
+        "_LF4_",
+        Array [
+          "number",
+          "4",
+          Array [
+            "effects",
+            Array [
+              "font",
+              Array [
+                "size",
+                1.27,
+                1.27,
+              ],
+            ],
+            null,
+            null,
+            null,
+            null,
+          ],
+        ],
+      ],
+      "_LF3_",
+      Array [
+        "pin",
+        "bidirectional",
+        "line",
+        Array [
+          "at",
+          12.7,
+          -2.54,
+          180,
+        ],
+        Array [
+          "length",
+          5.08,
+        ],
+        "_LF4_",
+        Array [
+          "name",
+          "C",
+          Array [
+            "effects",
+            Array [
+              "font",
+              Array [
+                "size",
+                1.27,
+                1.27,
+              ],
+            ],
+            null,
+            null,
+            null,
+            null,
+          ],
+        ],
+        "_LF4_",
+        Array [
+          "number",
+          "3",
+          Array [
+            "effects",
+            Array [
+              "font",
+              Array [
+                "size",
+                1.27,
+                1.27,
+              ],
+            ],
+            null,
+            null,
+            null,
+            null,
+          ],
+        ],
+      ],
+    ],
+  ],
+]
+`;

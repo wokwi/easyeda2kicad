@@ -7,10 +7,32 @@ function notNull<TValue>(value: TValue | null): value is TValue {
 }
 
 export function encodeString(str: string) {
+  // output formatting
+  if (str === '_LF_') {
+    return '\n';
+  }
+  if (str === '_LF1_') {
+    return '\n  ';
+  }
+  if (str === '_LF2_') {
+    return '\n    ';
+  }
+  if (str === '_LF3_') {
+    return '\n      ';
+  }
+  if (str === '_LF4_') {
+    return '\n        ';
+  }
+  // make sting without quotes for eg keywords
   if (/^[a-z][a-z0-9_]+$/.test(str)) {
     return str;
+  // make special quoted string possible by starting char &
+  } else if (/^&/.test(str)) {
+    return `"${str.replace('&', '')}"`;
   }
-  return `"${str.replace(/"/g, '""')}"`;
+  // make quoted string eg for values
+  // "" in text field throws Kicad error: changed in ' (BUG FIX)
+  return `"${str.replace(/"/g, "'")}"`;
 }
 
 function encodeNumber(value: number) {
