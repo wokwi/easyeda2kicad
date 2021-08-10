@@ -16,7 +16,9 @@ if (process.argv[2] === '-v') {
   process.exit(0);
 }
 
-const input = JSON.parse(fs.readFileSync(process.argv[2], 'utf-8'));
+const inputFile = process.args[2] == '-' ? '/dev/stdin' : process.args[2];
+
+const input = JSON.parse(fs.readFileSync(inputFile, 'utf-8'));
 const output = input.docType === '5' ? convertSchematic(input) : convertBoard(input);
 const outputFile = process.argv[3];
 if (outputFile && outputFile !== '-') {
