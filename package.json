@@ -18,13 +18,13 @@
     "dist"
   ],
   "devDependencies": {
-    "@types/jest": "^26.0.10",
+    "@types/jest": "^27.0.2",
     "@types/node": "^12.12.7",
     "husky": "^3.0.9",
-    "jest": "^26.4.0",
-    "lint-staged": "^9.4.2",
+    "jest": "^27.3.1",
+    "lint-staged": "^11.2.6",
     "prettier": "^2.0.4",
-    "ts-jest": "^26.2.0",
+    "ts-jest": "^27.0.7",
     "ts-node": "^8.5.0",
     "tslint": "^5.20.1",
     "typescript": "^3.9.7"
