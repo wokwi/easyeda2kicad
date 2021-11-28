@@ -10,7 +10,7 @@ export function encodeString(str: string) {
   if (/^[a-z][a-z0-9_]+$/.test(str)) {
     return str;
   }
-  return `"${str.replace(/"/g, '""')}"`;
+  return `"${str.replace(/"/g, '\\"')}"`;
 }
 
 function encodeNumber(value: number) {

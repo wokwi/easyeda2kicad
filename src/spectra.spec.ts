@@ -6,6 +6,10 @@ describe('spectra', () => {
       expect(encodeObject(['foo', 'bar'])).toEqual('(foo bar)');
     });
 
+    it('should escape quotes in strings', () => {
+      expect(encodeObject(['0.96" OLED'])).toEqual('("0.96\\" OLED")');
+    });
+
     it('should ignore null values', () => {
       expect(encodeObject(['foo', null, 'bar'])).toEqual('(foo bar)');
     });
