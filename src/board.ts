@@ -1,3 +1,4 @@
+import { flatten, IParentTransform, kiAngle, kiAt, kiCoords, kiUnits, rotate } from './common';
 import { IEasyEDABoard } from './easyeda-types';
 import { encodeObject, ISpectraList } from './spectra';
 import { computeArc } from './svg-arc';
@@ -44,59 +45,6 @@ function getLayerName(id: string, conversionState: IConversionState) {
   }
 
   throw new Error(`Missing layer id: ${id}`);
-}
-
-interface ICoordinates {
-  x: number;
-  y: number;
-}
-
-interface IParentTransform extends ICoordinates {
-  angle: number | null;
-}
-
-function kiUnits(value: string | number) {
-  if (typeof value === 'string') {
-    value = parseFloat(value);
-  }
-  return value * 10 * 0.0254;
-}
-
-function kiAngle(value?: string, parentAngle?: number) {
-  if (value) {
-    const angle = parseFloat(value) + (parentAngle || 0);
-    if (!isNaN(angle)) {
-      return angle > 180 ? -(360 - angle) : angle;
-    }
-  }
-  return null;
-}
-
-function rotate({ x, y }: ICoordinates, degrees: number) {
-  const radians = (degrees / 180) * Math.PI;
-  return {
-    x: x * Math.cos(radians) - y * Math.sin(radians),
-    y: x * Math.sin(radians) + y * Math.cos(radians),
-  };
-}
-
-function kiCoords(
-  x: string,
-  y: string,
-  transform: IParentTransform = { x: 0, y: 0, angle: 0 }
-): ICoordinates {
-  return rotate(
-    {
-      x: kiUnits(parseFloat(x) - 4000) - transform.x,
-      y: kiUnits(parseFloat(y) - 3000) - transform.y,
-    },
-    transform.angle || 0
-  );
-}
-
-function kiAt(x: string, y: string, angle?: string, transform?: IParentTransform) {
-  const coords = kiCoords(x, y, transform);
-  return ['at', coords.x, coords.y, kiAngle(angle)];
 }
 
 function kiStartEnd(
@@ -274,24 +222,32 @@ function convertText(
     return null;
   }
 
-  const fontTable: { [key: string]: { width: number; thickness: number } } = {
-    'NotoSerifCJKsc-Medium': { width: 0.8, thickness: 0.3 },
-    'NotoSansCJKjp-DemiLight': { width: 0.6, thickness: 0.5 },
+  const fontTable: { [key: string]: { width: number; height: number; thickness: number } } = {
+    'NotoSerifCJKsc-Medium': { width: 0.8, height: 0.8, thickness: 0.3 },
+    'NotoSansCJKjp-DemiLight': { width: 0.6, height: 0.6, thickness: 0.5 },
   };
-  const fontMultiplier = font in fontTable ? fontTable[font] : { width: 1, thickness: 1 };
-  const actualFontSize = kiUnits(fontSize) * fontMultiplier.width;
+  const fontMultiplier =
+    font in fontTable ? fontTable[font] : { width: 0.9, height: 1, thickness: 0.9 };
+  const actualFontWidth = kiUnits(fontSize) * fontMultiplier.width;
+  const actualFontHeight = kiUnits(fontSize) * fontMultiplier.height;
+
+  const parsedAngle = parseFloat(angle);
+  const parentAngle = parentCoords?.angle ?? 0;
+  const xOffset = 0.5 * -1.28 - 1.5 * 1.28 * Math.sin((Math.PI * parsedAngle) / 180);
+  const yOffset = 1.5 * -1.28 + 2.54 * Math.sin((Math.PI * parsedAngle) / 180);
+
   return [
     objName,
     objName === 'fp_text' ? (type === 'P' ? 'reference' : 'value') : null,
     text,
-    kiAt(x, y, angle, parentCoords),
+    kiAt(parseFloat(x) + xOffset, parseFloat(y) + yOffset, angle, parentCoords),
     ['layer', layerName],
     display === 'none' ? 'hide' : null,
     [
       'effects',
       [
         'font',
-        ['size', actualFontSize, actualFontSize],
+        ['size', actualFontHeight, actualFontWidth],
         ['thickness', kiUnits(lineWidth) * fontMultiplier.thickness],
       ],
       ['justify', 'left', layerName[0] === 'B' ? 'mirror' : null],
@@ -427,19 +383,29 @@ function convertPad(
   const layers: { [key: string]: string[] } = {
     1: ['F.Cu', 'F.Paste', 'F.Mask'],
     2: ['B.Cu', 'B.Paste', 'B.Mask'],
-    11: ['*.Cu', '*.Paste', '*.Mask'],
+    11: ['*.Cu', '*.Mask'],
   };
   const [actualWidth, actualHeight] = pointsAreRectangle
     ? rectangleSize(pointList, parseFloat(rotation))
-    : [width, height];
+    : [parseFloat(width), parseFloat(height)];
   const padNum = parseInt(num, 10);
+
+  let realWidth = actualWidth;
+  let realHeight = actualHeight;
+  let realRotation = parseFloat(rotation);
+  if (realWidth > realHeight) {
+    realWidth = realHeight;
+    realHeight = actualWidth;
+    realRotation = realRotation - 90;
+  }
+
   return [
     'pad',
     isNaN(padNum) ? num : padNum,
     kiUnits(holeRadius) > 0 ? 'thru_hole' : 'smd',
     padShapes[actualShape],
-    kiAt(x, y, rotation, transform),
-    ['size', Math.max(kiUnits(actualWidth), 0.01), Math.max(kiUnits(actualHeight), 0.01)],
+    kiAt(x, y, realRotation, transform),
+    ['size', Math.max(kiUnits(realWidth), 0.01), Math.max(kiUnits(realHeight), 0.01)],
     ['layers', ...layers[layerId]],
     getDrill(kiUnits(holeRadius), kiUnits(holeLength)),
     netId > 0 ? ['net', netId, net] : null,
@@ -723,15 +689,13 @@ export function convertShape(shape: string, conversionState: IConversionState) {
   }
 }
 
-function flatten<T>(arr: T[]) {
-  return ([] as T[]).concat(...arr);
-}
-
-export function convertBoardToArray(input: IEasyEDABoard): ISpectraList {
+export async function convertBoardToArray(input: IEasyEDABoard): Promise<ISpectraList> {
   const { nets } = input.routerRule || { nets: [] as string[] };
   const conversionState = { nets, innerLayers: 0 };
   nets.unshift(''); // Kicad expects net 0 to be empty
-  const shapes = flatten(input.shape.map((shape) => convertShape(shape, conversionState)));
+  const shapes = flatten(
+    await Promise.all(input.shape.map(async (shape) => convertShape(shape, conversionState)))
+  );
   const outputObjs = [...nets.map((net, idx) => ['net', idx, net]), ...shapes].filter(
     (obj) => obj != null
   );
@@ -775,6 +739,6 @@ export function convertBoardToArray(input: IEasyEDABoard): ISpectraList {
   ];
 }
 
-export function convertBoard(board: IEasyEDABoard) {
-  return encodeObject(convertBoardToArray(board));
+export async function convertBoard(board: IEasyEDABoard) {
+  return encodeObject(await convertBoardToArray(board));
 }
