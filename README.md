@@ -1,3 +1,7 @@
+# This project is no longer maintained!
+
+We recommend [the easyeda2kicad python package](https://github.com/uPesy/easyeda2kicad.py) instead.
+
 # EasyEDA 2 KiCad
 
 Convert EasyEDA PCBs to KiCad format
